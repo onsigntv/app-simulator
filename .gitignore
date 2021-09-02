@@ -1,0 +1,9 @@
+.DS_Store
+.idea/
+.vscode/
+__pycache__/
+env/
+venv/
+build/
+dist/
+onsigntv_app_simulator.egg-info/

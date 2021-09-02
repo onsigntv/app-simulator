@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" id="full-container">
+  <div class="card text-white bg-danger">
+    <div class="card-header">Template Exception</div>
+    <div class="list-group list-group-flush">
+      {% for error in exceptions %}
+      <li>
+        {% if error.error %}
+          {{ error.error }}
+        {% else %}
+          {{ error }}
+        {% endif %}
+      </li>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% if formdata %}
+<script type="text/javascript">
+  (function() {
+    var source = null;
+    function createSource() {
+      if (source) source.close();
+      source = new EventSource("/.change_notification");
+      source.onmessage = function() {
+        var formEl = document.createElement('form');
+        formEl.hidden = true;
+        formEl.method = 'POST';
+        formEl.enctype = 'multipart/form-data';
+        for (var [key, val] of Object.entries({{ formdata|safe }})) {
+          var i = document.createElement('input');
+          i.name = key;
+          i.value = val;
+          formEl.appendChild(i);
+        }
+        document.body.appendChild(formEl);
+        formEl.requestSubmit();
+      };
+      source.onerror = function() { window.setTimeout(createSource, 1000); };
+    }
+    createSource();
+  })();
+</script>
+{% endif %}
+{% endblock %}

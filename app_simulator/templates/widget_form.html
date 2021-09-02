@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" id="full-container">
+  <div class="card">
+    <div class="card-header">Preview App</div>
+    <div class="card-body">
+    {% if exceptions %}
+      <h5>Validation Error</h5>
+      <br>
+      {% for error in exceptions %}
+        {% if error.error %}
+          <div class="alert alert-danger">{{ error.error }}</div>
+        {% else %}
+          <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
+      {% endfor %}
+    {% else %}
+      <h5>App Info</h5>
+      <p><strong>Name :</strong><br>{{ title }}</p>
+      <h5>App Options</h5>
+      <p class="form-text text-muted">The user of this app will be able to configure the following options.</p>
+      <form action="{{ file_name }}" method="POST" enctype="multipart/form-data">
+      {% for field in form -%}
+        {% if field.widget.input_type == "checkbox" -%}
+        <div class="form-check" style="margin-bottom: 1rem;">
+          {{ field() }}
+          <label class="form-check-label" for="{{ field.label.field_id }}">{{ field.label.text }}</label>
+        {% else -%}
+        <div class="form-group">
+          <label for="{{ field.label.field_id }}">
+            {{ field.label.text }}
+            {% if field.flags.required %}<small class="align-top"><strong>[required]</strong></small>{% endif %}
+          </label>
+          {{ field() }}
+        {% endif -%}
+          {% for error in field.errors -%}
+            <div class="invalid-feedback">{{ error }}</div>
+          {% endfor -%}
+          {% if field.description -%}
+            <small class="form-text text-muted">{{ field.description }}</small>
+          {% endif -%}
+        </div>
+      {% endfor %}
+        <button type="submit" class="btn btn-primary"> Preview </button>
+      </form>
+    {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
