@@ -1,8 +1,12 @@
 import colorsys
+import datetime
+import decimal
 import hashlib
+import json
 import logging
 import re
 import threading
+import uuid
 from collections import OrderedDict
 from html.parser import HTMLParser
 from pathlib import Path
@@ -307,6 +311,7 @@ def default_jinja_env():
     env.globals["__muted__"] = False
     env.globals["timeline_is_muted"] = False
 
+    env.filters["json"] = do_json
     env.filters["numberfmt"] = do_numberfmt
     env.filters["slugify"] = do_slugify
     env.filters["qrcode"] = do_qrcode
@@ -516,6 +521,64 @@ def do_qrcode(value):
     svg_value = svg_stream.getvalue().decode("utf-8")
 
     return Markup(svg_value[svg_value.find("<svg") :])
+
+
+class LenientJSONEncoder(json.JSONEncoder):
+    """
+    JSONEncoder subclass that knows how to encode date/time, decimal types, and
+    UUIDs.
+    """
+
+    def default(self, o):
+        # See "Date Time String Format" in the ECMA-262 specification.
+        if isinstance(o, datetime.datetime):
+            r = o.isoformat()
+            if o.microsecond:
+                r = r[:23] + r[26:]
+            if r.endswith("+00:00"):
+                r = r[:-6] + "Z"
+            return r
+        elif isinstance(o, datetime.date):
+            return o.isoformat()
+        elif isinstance(o, datetime.time):
+            if o.utcoffset() is not None:
+                raise ValueError("JSON can't represent timezone-aware times.")
+            r = o.isoformat()
+            if o.microsecond:
+                r = r[:12]
+            return r
+        elif isinstance(o, datetime.timedelta):
+            if o < datetime.timedelta(0):
+                sign = "-"
+                o *= -1
+            else:
+                sign = ""
+
+            days = o.days
+            seconds = o.seconds
+            microseconds = o.microseconds
+
+            minutes = seconds // 60
+            seconds = seconds % 60
+
+            hours = minutes // 60
+            minutes = minutes % 60
+            ms = ".{:06d}".format(microseconds) if microseconds else ""
+            return "{}P{}DT{:02d}H{:02d}M{:02d}{}S".format(
+                sign, days, hours, minutes, seconds, ms
+            )
+        elif isinstance(o, (decimal.Decimal, uuid.UUID)):
+            return str(o)
+        else:
+            return super().default(o)
+
+
+def do_json(value):
+    return Markup(
+        json.dumps(value, cls=LenientJSONEncoder)
+        .replace("'", r"\u0027")
+        .replace("&", r"\u0026")
+    )
 
 
 class LenientUndefined(Undefined):
