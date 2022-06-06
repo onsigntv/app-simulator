@@ -8,7 +8,7 @@ import sys
 # The directory containing this file
 HERE = pathlib.Path(__file__).parent
 
-VERSION = "0.9.1"
+VERSION = "0.9.2"
 
 DESCRIPTION = (
     "Assist the development of apps for OnSign TV platform by running them locally."
@@ -48,6 +48,9 @@ setuptools.setup(
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Topic :: Software Development",
     ],
     url="https://github.com/onsigntv/app-simulator",
@@ -73,5 +76,5 @@ setuptools.setup(
     },
     data_files=[(".", ["requirements.txt"])],
     install_requires=REQUIREMENTS,
-    extras_require={"dev": ["black==21.7b0"]},
+    extras_require={"dev": ["black==22.1.0"]},
 )
