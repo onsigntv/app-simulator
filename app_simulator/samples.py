@@ -1,49 +1,60 @@
 INSTAGRAM_FEED = """
-[
-    {
-        "comments": 2,
-        "likes": 1,
-        "id": "363839373298",
-        "created": "2010-07-17 01:29:43",
-        "caption": "",
-        "type": "video",
-        "tags": [
-        ],
-        "user": {
-            "username": "kevin",
+{
+    "created_time": "2015-10-10T10:30:00Z",
+    "user": {
             "full_name": "Kevin S",
+            "id": "3",
             "profile_picture": "http://distillery.s3.amazonaws.com/profiles/profile_3_75sq_1295574122.jpg",
-            "id": "3"
+            "username": "kevin"
         },
-        "image": {
-            "url": "http://distilleryimage2.ak.instagram.com/11f75f1cd9cc11e2a0fd22000aa8039a_7.jpg",
-            "width": 612,
-            "height": 612
-        }
-    },
-    {
-        "comments": 0,
-        "likes": 15,
-        "id": "26621408",
-        "created": "2011-02-03 03:19:12",
-        "caption": "Inside le truc #foodtruck",
-        "type": "image",
-        "tags": [
-            "foodtruck"
-        ],
-        "user": {
-            "username": "kevin",
-            "full_name": "Kevin S",
-            "profile_picture": "http://distillery.s3.amazonaws.com/profiles/profile_3_75sq_1295574122.jpg",
-            "id": "3"
+    "posts": [
+        {
+            "caption": "",
+            "comment_count": 2,
+            "created_time": "2015-01-01T11:00:00Z",
+            "id": "123456789",
+            "image": {
+                "height": 612,
+                "url": "http://distilleryimage2.ak.instagram.com/11f75f1cd9cc11e2a0fd22000aa8039a_7.jpg",
+                "width": 612
+            },
+            "like_count": 1,
+            "tags": [
+                "example", "tag"
+            ],
+            "type": "image",
+            "user": {
+                "full_name": "Kevin S",
+                "id": "3",
+                "profile_picture": "http://distillery.s3.amazonaws.com/profiles/profile_3_75sq_1295574122.jpg",
+                "username": "kevin"
+            }
         },
-        "image": {
-            "url": "http://distillery.s3.amazonaws.com/media/2011/02/02/6ea7baea55774c5e81e7e3e1f6e791a7_7.jpg",
-            "width": 612,
-            "height": 612
+        {
+            "caption": "Inside le truc #foodtruck",
+            "comment_count": 0,
+            "created_time": "2015-01-01T11:00:00Z",
+            "id": "123456789",
+            "image": {
+                "height": 612,
+                "url": "http://distillery.s3.amazonaws.com/media/2011/02/02/6ea7baea55774c5e81e7e3e1f6e791a7_7.jpg",
+                "width": 612
+            },
+            "like_count": 15,
+            "tags": [
+                "foodtruck"
+            ],
+            "type": "image",
+            "user": {
+                "full_name": "Kevin S",
+                "id": "3",
+                "profile_picture": "http://distillery.s3.amazonaws.com/profiles/profile_3_75sq_1295574122.jpg",
+                "username": "kevin"
+            }
         }
-    }
-]"""
+    ]
+}
+"""
 
 TWITTER_FEED = """
 [
@@ -605,3 +616,34 @@ VIDEOS = [
         "height": 640,
     },
 ]
+
+PLAYBACK_INFO = """{
+  "reason": {
+    "type": "scheduled"
+  },
+  "campaign": {
+    "id": "vPHxEp",
+    "name": "content name",
+    "duration": 20,
+    "tags": [
+      "content tag 1",
+      "contenttag2"
+    ],
+    "attrs": {
+      "attr 1": "value 1"
+    }
+  },
+  "player": {
+    "id": "8BCYL6A",
+    "name": "player name",
+    "version": "10.0.5",
+    "tags": [
+      "player tag 1",
+      "playertag2"
+    ],
+    "attrs": {
+      "attr 1": 1,
+      "attr 2": "value 2"
+    }
+  }
+}"""

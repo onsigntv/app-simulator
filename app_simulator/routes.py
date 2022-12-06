@@ -1,14 +1,13 @@
 import asyncio
 import logging
-import os
-from pathlib import Path
+import urllib
 
 from aiohttp_sse import sse_response
-from aiohttp.web import Response, FileResponse, HTTPFound, HTTPNotFound
+from aiohttp.web import Response, FileResponse, HTTPNotFound
 from jinja2 import Environment, PackageLoader, select_autoescape
 from multidict import MultiDict
 
-from .app_config import extract_app_config, render_app_html
+from .app_config import SDK_TAG, extract_app_config, render_app_html
 from .form import build_form, ALLOWED_FILE_TYPES
 from .samples import TWITTER_FEED, INSTAGRAM_FEED
 from .storage import get_file, save_file
@@ -34,15 +33,11 @@ def track_file(x):
 
 
 async def list_form_file(request):
-    if "file_name" in request.match_info:
-        name = request.match_info["file_name"]
+    name = request.match_info.get("file_name", "")
 
-        if name == "..back":
-            name = ".."
-    else:
-        name = ""
-
-    path = Path.cwd() / name
+    path = request.app["base_path"]
+    if name:
+        path = path / name
 
     if path.is_file() and path.name.endswith(".html"):
         logger.debug(f"open a html file: {name}")
@@ -72,49 +67,76 @@ async def list_form_file(request):
             text=jinja_env.get_template("widget_form.html").render(
                 {
                     "form": form,
+                    "warnings": config["warnings"],
                     "title": config["title"],
-                    "file_name": "/.preview/{}".format(name),
+                    "file_name": "/.preview/{}".format(urllib.parse.quote(name)),
                 },
             ),
             content_type="text/html",
         )
     elif path.is_file():
-        if path.suffix in ALLOWED_FILE_TYPES:
+        if ".preview/" in request.headers.get("referer", ""):
+            return HTTPNotFound()
+        elif path.suffix in ALLOWED_FILE_TYPES:
             logger.debug(f"serving file: {name}")
-            return FileResponse(name)
+            return FileResponse(path)
         else:
             return HTTPNotFound()
-    else:
+    elif path.is_dir():
         logger.debug("opening directory")
-        if path.is_dir() and name != "":
-            logger.debug("back to a parent directory")
-            os.chdir(name)
-            raise HTTPFound("/")
 
-        folder_or_files = [{"name": "..", "link": "/..back"}]
-        for element in sorted(Path.cwd().iterdir(), key=lambda f: f.name.lower()):
-            if not element.name.startswith("."):
-                folder_or_files.append(
-                    {
-                        "name": element.name,
-                        "link": "/" + element.name,
-                        "is_file": Path.is_file(Path.cwd() / element),
-                    }
-                )
+        folder_or_files = []
+        if name:
+            link = str(path.parent.relative_to(request.app["base_path"]))
+            if link == ".":
+                link = "/"
+            else:
+                link = f"/{link}/"
 
+            folder_or_files.append(
+                {
+                    "name": "Up...",
+                    "link": link,
+                    "is_up": True,
+                }
+            )
+
+        for element in sorted(
+            path.iterdir(), key=lambda f: (not f.is_dir(), f.name.lower())
+        ):
+            if element.is_file() and element.suffix not in ALLOWED_FILE_TYPES:
+                continue
+
+            if element.name.startswith("."):
+                continue
+
+            folder_or_files.append(
+                {
+                    "name": element.name + ("/" if element.is_dir() else ""),
+                    "link": urllib.parse.quote(
+                        element.name + ("/" if element.is_dir() else "")
+                    ),
+                    "is_file": element.is_file(),
+                }
+            )
         return Response(
             text=jinja_env.get_template("list_files.html").render(
-                {"files": folder_or_files}
+                {
+                    "files": folder_or_files,
+                    "path": path.absolute(),
+                }
             ),
             content_type="text/html",
         )
+    else:
+        return HTTPNotFound()
 
 
 async def preview_app(request):
     logger.debug("retrieve data")
 
     name = request.match_info["file_name"]
-    path = Path.cwd() / name
+    path = request.app["base_path"] / name
 
     if path not in tracked_files:
         logger.debug(f"add {name} to tracked files list before preview")
@@ -143,7 +165,6 @@ async def preview_app(request):
         config = extract_app_config(path.read_text("utf-8"))
     except Exception as exp:
         exceptions = [exp]
-        logger.debug(f"handling exception: {exp}")
         logger.info(f"handling exception: {exp}")
 
         return Response(
@@ -181,7 +202,7 @@ async def preview_app(request):
                 content_type="text/html",
             )
 
-        html = inject_script_into_html(html, formdata)
+        html = inject_script_into_html(html, SDK_TAG, formdata)
 
         return Response(text=html, content_type="text/html")
     else:
@@ -196,7 +217,8 @@ async def preview_app(request):
                 {
                     "form": form,
                     "title": config["title"],
-                    "file_name": "/.preview/{}".format(request.match_info["file_name"]),
+                    "file_name": "/.preview/{}".format(urllib.parse.quote(name)),
+                    "warnings": config["warnings"],
                 },
             ),
             content_type="text/html",
@@ -230,6 +252,67 @@ async def change_notification_sse(request):
     return resp
 
 
+async def proxy_request(request):
+    import aiohttp
+    from multidict import CIMultiDict
+
+    hop_by_hop_headers = (
+        "Accept-Encoding",
+        "Connection",
+        "Keep-Alive",
+        "TE",
+        "Trailer",
+        "Transfer-Encoding",
+        "Upgrade",
+    )
+
+    async with aiohttp.ClientSession() as session:
+        # Clean hop-by-hop headers
+        req_headers = CIMultiDict(request.headers)
+        for header_name in hop_by_hop_headers + ("Host",):
+            req_headers.pop(header_name, 0)
+
+        req_data = None
+        if request.body_exists:
+            req_data = await request.read()
+
+        async with session.request(
+            request.method, request.query.get("url"), headers=req_headers, data=req_data
+        ) as resp:
+            # Clean hop-by-hop headers
+            resp_headers = CIMultiDict(resp.headers)
+            for header_name in hop_by_hop_headers + (
+                "Content-Encoding",
+                "Content-Length",
+            ):
+                resp_headers.pop(header_name, 0)
+
+            resp_data = await resp.read()
+            return Response(
+                body=resp_data,
+                status=resp.status,
+                headers=resp_headers,
+            )
+
+
+async def serve_preview_asset(request):
+    name = request.match_info.get("file_name", "")
+
+    path = request.app["base_path"]
+    if name:
+        path = path / name
+
+    if (
+        path.is_file()
+        and path.suffix in ALLOWED_FILE_TYPES
+        and request.query.get("tracked")
+    ):
+        logger.debug(f"serving file: {name}")
+        return FileResponse(path)
+
+    return HTTPNotFound()
+
+
 async def serve_file_from_uploads(request):
     return FileResponse(get_file(request.match_info["file_name"]))
 
@@ -246,3 +329,22 @@ async def serve_instagram_data(request):
     import json
 
     return web.json_response(json.loads(INSTAGRAM_FEED))
+
+
+async def serve_font(request):
+    font_path = request.match_info["blob_path"]
+
+    if font_file := get_file(font_path.replace("/", "")):
+        return FileResponse(font_file)
+    else:
+        import aiohttp
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                "https://signagewidgets.net/app-media/" + font_path
+            ) as resp:
+                data = await resp.read()
+
+        filename = save_file(font_path, data)
+
+        return FileResponse(get_file(filename))

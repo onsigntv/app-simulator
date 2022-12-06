@@ -6,17 +6,17 @@ import json
 import logging
 import re
 import threading
+import urllib
 import uuid
 from collections import OrderedDict
 from html.parser import HTMLParser
-from pathlib import Path
 
 from jinja2 import nodes, Undefined, StrictUndefined, Markup
 from jinja2.exceptions import TemplateSyntaxError
 from jinja2.ext import Extension, GETTEXT_FUNCTIONS, extract_from_ast
 from jinja2.sandbox import ImmutableSandboxedEnvironment
 
-from . import utils
+from . import utils, samples
 
 
 _local = threading.local()
@@ -99,17 +99,15 @@ FETCH_TEMPLATE = """
 </script>
 """
 
+SDK_TAG = "<!--__loadsdk__-->"
+SDK_WARNING_EXPIRY_DATE = "2023-02-01"
+
 
 class MediaItem:
-    def __init__(self, path, file_name, tracker):
-        path = path / file_name
-
-        if path.is_file():
-            logger.debug(f"register media: {path}")
-            self._path = path
-            self._tracker = tracker
-        else:
-            raise ValueError(f"No file found for {path}")
+    def __init__(self, path, name, tracker):
+        self._path = path / name
+        self._name = name
+        self._tracker = tracker
 
     @property
     def name(self):
@@ -118,7 +116,7 @@ class MediaItem:
     @property
     def url(self):
         self._tracker(self._path)
-        return "/" + str(self._path.relative_to(Path.cwd()))
+        return urllib.parse.quote(self._name) + "?tracked=1"
 
     @property
     def width(self):
@@ -140,22 +138,30 @@ class ConfigurableWidgetMedia:
         logger.debug(f"register widget media: {path}")
         self._path = path
         self._tracker = tracker
+        self._subfiles = {
+            re.sub(r"[^\w]", "_", subpath.stem.lower()): MediaItem(
+                self._path, subpath.name, self._tracker
+            )
+            for subpath in self._path.iterdir()
+            if subpath.is_file() and not subpath.name.startswith(".")
+        }
 
     def __getitem__(self, name):
+        if not (self._path / name).is_file():
+            raise ValueError(f"File not found: {name}")
+
         return MediaItem(self._path, name, self._tracker)
 
     def __getattr__(self, key):
-        for subpath in self._path.iterdir():
-            if not subpath.name.startswith("."):
-                if re.sub("[^\w]", "_", subpath.stem.lower()) == key:
-                    return MediaItem(subpath, "", self._tracker)
+        if key not in self._subfiles:
+            raise ValueError(f"File not found: {key}")
+
+        return self._subfiles[key.lower()]
 
 
 class LocalContextManager:
     def __init__(self):
         self.ctx = {}
-        self.provider = None
-        self.manager = None
 
     def __call__(self, **kwargs):
         self.ctx = dict(kwargs)
@@ -177,8 +183,10 @@ class LocalContextManager:
         return value
 
     def do_shim(self, name):
+        if name == "events":
+            return ""
+
         shims = {
-            "events": "static/shim/events.js",
             "i18n": "static/shim/Intl.min.js",
         }
 
@@ -186,17 +194,9 @@ class LocalContextManager:
         if path is None:
             raise ValueError("Unknown shim")
 
-        if self.provider is None:
-            from pkg_resources import ResourceManager, get_provider
+        return Markup(utils.get_resource_string(path))
 
-            self.provider = get_provider("app_simulator")
-            self.manager = ResourceManager()
-
-        return Markup(
-            self.provider.get_resource_string(self.manager, path).decode("utf-8")
-        )
-
-    def do_datasink(
+    def do_datafeed(
         self, *, name, label, fields, help=None, optional=False, optgroup=None
     ):
         data_source_item = self.ctx["context"].get(name)
@@ -211,7 +211,7 @@ class LocalContextManager:
         processed_feed = process_feed(value)
 
         return WebFeed(
-            url=self.data,
+            url=value,
             title=processed_feed["title"],
             subtitle=processed_feed["subtitle"],
             entries=[WebFeedEntry(entry) for entry in processed_feed["entries"]],
@@ -302,9 +302,11 @@ def default_jinja_env():
     env.globals["fetch_sheet"] = env.local_ctx.do_fetch_sheet
     env.globals["localize"] = env.local_ctx.do_localize
     env.globals["signagewidgets"] = env.local_ctx.do_signagewidgets
-    env.globals["__datasink__"] = env.local_ctx.do_datasink
-    env.globals["__datafeed__"] = env.local_ctx.do_datasink
+    env.globals["__datasink__"] = env.local_ctx.do_datafeed
+    env.globals["__datafeed__"] = env.local_ctx.do_datafeed
     env.globals["__field__"] = lambda *args, **kwargs: ""
+
+    env.globals["__loadsdk__"] = Markup(SDK_TAG)
 
     env.globals["__lang__"] = "en"
     env.globals["__rtl__"] = False
@@ -680,6 +682,11 @@ class HTMLTemplateParser(HTMLParser):
         self.title = None
         self.variables = []
         self.metas = {}
+        self.loadsdk_error = False
+
+    def handle_comment(self, data):
+        if data == "__loadsdk__" and self.variables:
+            self.loadsdk_error = True
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
@@ -706,8 +713,7 @@ def extract_app_config(template_text):
 
     template = env.from_string(template_text)
 
-    fields = OrderedDict()
-    extra_fields = OrderedDict()
+    app_fields = OrderedDict()
     exceptions = []
 
     def detect_config(
@@ -767,7 +773,7 @@ def extract_app_config(template_text):
 
             field["choices"] = kwargs["choices"]
 
-        fields[name] = field
+        app_fields[name] = field
 
     class DataSinkField:
         def __init__(self, *, name, type, label, help=None, optional=False):
@@ -789,23 +795,23 @@ def extract_app_config(template_text):
         def as_dict(self):
             return self.__dict__
 
-    def detect_datasink(
+    def detect_datafeed(
         *, name, label, fields, help=None, optional=False, optgroup=None
     ):
         if not re.match("^[a-zA-Z][a-zA-Z0-9_]*$", name):
-            raise ValueError("Invalid data sink name: %(name)s" % {"name": name})
+            raise ValueError("Invalid data feed name: %(name)s" % {"name": name})
 
         if not isinstance(fields, list):
-            raise ValueError("Data sink fields must be a list")
+            raise ValueError("Data feed fields must be a list")
 
         if not fields:
-            raise ValueError("Data sink fields must not be empty")
+            raise ValueError("Data feed fields must not be empty")
 
         if not all([isinstance(f, DataSinkField) for f in fields]):
-            raise ValueError("Data sink fields must use __field__ constructor")
+            raise ValueError("Data feed fields must use __field__ constructor")
 
-        field_datasink = {
-            "type": "datasink",
+        field_datafeed = {
+            "type": "datafeed",
             "label": label,
             "value": None,
             "help_text": help,
@@ -814,19 +820,30 @@ def extract_app_config(template_text):
             "optgroup": optgroup,
         }
 
-        extra_fields[name] = field_datasink
+        app_fields[name] = field_datafeed
 
     def detect_meta(name, value):
         if name in KNOWN_METAS:
             config[name] = value
 
+    class DetectLoadSDK:
+        def __str__(self):
+            if app_fields:
+                raise ValueError(
+                    "{{ __loadsdk__ }} must be added before __config__ or __datafeed__"
+                )
+
+            config["sdk"] = True
+            return Markup(SDK_TAG)
+
     # Then we render the template to remove all Jinja2 tags
     html = template.render(
         {
+            "__loadsdk__": DetectLoadSDK(),
             "__config__": detect_config,
             "__meta__": detect_meta,
-            "__datasink__": detect_datasink,
-            "__datafeed__": detect_datasink,
+            "__datasink__": detect_datafeed,
+            "__datafeed__": detect_datafeed,
             "__field__": DataSinkField,
         }
     )
@@ -840,10 +857,22 @@ def extract_app_config(template_text):
     else:
         raise ValueError("A title tag is required for this app")
 
+    if parser.loadsdk_error:
+        raise ValueError("__loadsdk__ must be added before <meta> configurations")
+
+    config["warnings"] = {}
+
+    # After SDK_WARNING_EXPIRY_DATE, not loading sdk will be considered an error.
+    if not config.get("sdk"):
+        if datetime.datetime.now().strftime("%Y-%m-%d") >= SDK_WARNING_EXPIRY_DATE:
+            raise ValueError("Missing {{ __loadsdk__ }} tag in app.")
+        else:
+            config["warnings"]["missing_loadsdk"] = True
+
     config.update(parser.metas)
 
     if parser.variables:
-        if fields:
+        if app_fields:
             raise ValueError("Unable to mix __config__ and <meta> variables together.")
 
         for pos, attrs in parser.variables:
@@ -865,20 +894,22 @@ def extract_app_config(template_text):
                         "Choice variable requires a value: %(name)s" % {"name": name}
                     )
 
-                if name not in fields:
-                    fields[name] = field
-                    fields[name]["choices"] = [[field["value"], field["label"]]]
-                elif fields[name]["type"] not in ("choice", "multichoice"):
+                if name not in app_fields:
+                    app_fields[name] = field
+                    app_fields[name]["choices"] = [[field["value"], field["label"]]]
+                elif app_fields[name]["type"] not in ("choice", "multichoice"):
                     raise ValueError(
                         "Choice variable configured wrong: %(name)s" % {"name": name}
                     )
                 else:
-                    fields[name]["choices"].append([field["value"], field["label"]])
+                    app_fields[name]["choices"].append([field["value"], field["label"]])
             else:
-                fields[name] = field
+                app_fields[name] = field
 
         for field in [
-            f[1] for f in fields.items() if f[1]["type"] in ("choice", "multichoice")
+            f[1]
+            for f in app_fields.items()
+            if f[1]["type"] in ("choice", "multichoice")
         ]:
             choices = field["choices"]
 
@@ -889,7 +920,7 @@ def extract_app_config(template_text):
                 for choice in choices:
                     choice[1] = choice[1].split(":", 1)[1].strip()
 
-    for name, field in fields.items():
+    for name, field in app_fields.items():
         if not re.match("^[a-zA-Z][a-zA-Z0-9_]*$", name):
             raise ValueError(
                 {"error": "Invalid variable name: %(name)s" % {"name": name}}
@@ -900,7 +931,7 @@ def extract_app_config(template_text):
                 {"error": "Invalid variable name: %(name)s" % {"name": name}}
             )
 
-        if field["type"] not in KNOWN_TYPES:
+        if field["type"] not in KNOWN_TYPES | {"datafeed"}:
             raise ValueError(
                 {"error": "Invalid variable type: %(name)s" % {"name": name}}
             )
@@ -911,7 +942,58 @@ def extract_app_config(template_text):
                 % {"name": name}
             )
 
-    config["fields"] = list(map(list, fields.items()))
+    app_fields["_delay_show"] = {
+        "type": "bool",
+        "label": "Delay Show Event By 3 Seconds",
+        "value": False,
+        "help_text": Markup(
+            """
+            Use this to simulate
+            <a href="https://github.com/onsigntv/apps/blob/master/docs/JSBRIDGE.md#show-event" target="_blank">
+                app preloading
+            </a> done by a real OnSign TV Player.
+            """
+        ),
+        "required": None,
+        "optgroup": None,
+    }
+
+    app_fields["_proxy_requests"] = {
+        "type": "bool",
+        "label": "Proxy Javascript Requests",
+        "value": False,
+        "help_text": Markup(
+            """
+            Workaround <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS" target="_blank">
+                Cross-Origin Resource Sharing (CORS)
+            </a> issues by proxying uses of <code>fetch</code> or <code>XMLHttpRequest</code>
+            """
+        ),
+        "required": None,
+        "optgroup": None,
+    }
+
+    app_fields["_playback_info"] = {
+        "type": "paragraph",
+        "label": "Javascript Playback Info Data",
+        "value": samples.PLAYBACK_INFO,
+        "help_text": Markup(
+            """
+            Check the
+            <a href="https://github.com/onsigntv/apps/blob/master/docs/JSBRIDGE.md" target="_blank">
+              Javascript API documentation
+            </a>
+            to know what information will be available through
+            <a href="https://github.com/onsigntv/apps/blob/master/docs/JSBRIDGE.md#playbackInfo" target="_blank">
+              <code>signage.playbackInfo()</code>
+            </a>
+            """
+        ),
+        "required": None,
+        "optgroup": None,
+    }
+
+    config["fields"] = list(map(list, app_fields.items()))
     config["exceptions"] = exceptions
 
     try:
@@ -932,11 +1014,5 @@ def extract_app_config(template_text):
         if catalog:
             config["i18n"] = True
             config["catalog"] = list(catalog.values())
-
-    if extra_fields:
-        config["fields"] = [] if not config.get("fields") else config["fields"]
-        config["fields"] += [
-            [field_name, field_data] for field_name, field_data in extra_fields.items()
-        ]
 
     return config

@@ -78,7 +78,8 @@ def build_form(config):
         label = field["label"]
         help_text = field["help_text"]
 
-        logger.debug(f"registering field '{name}' of type '{kind}'")
+        if not name.startswith("_"):
+            logger.debug(f"registering field '{name}' of type '{kind}'")
 
         if "required" in field and field["required"]:
             validators = [wtforms.validators.InputRequired()]
@@ -121,7 +122,11 @@ def build_form(config):
 
         elif kind == "bool":
             initial = True
-            if not field["value"] or field["value"].lower() in ("no", "false", "0"):
+            if not field["value"] or str(field["value"]).lower() in (
+                "no",
+                "false",
+                "0",
+            ):
                 initial = False
 
             validators = []
@@ -444,7 +449,7 @@ def build_form(config):
                 },
             )
 
-        elif kind == "datasink":
+        elif kind == "datafeed":
             fields[name] = DataSourceField(
                 fields=field["datasource_fields"],
                 label=label + " | number of entries",

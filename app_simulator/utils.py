@@ -119,57 +119,55 @@ def formdata_to_json(data):
         if isinstance(value, dict) and "filename" in value:
             _data[key] = value["filename"]
 
+        if key == "_playback_info":
+            try:
+                value = json.loads(value)
+            except Exception:
+                value = {}
+
+            _data[key] = json.dumps(value)
+
     return json.dumps(_data)
 
 
-def inject_script_into_html(html, data):
+def inject_script_into_html(html, sdk_tag, form_data):
     script = """
 <script type="text/javascript">
-  (function() {
-    var source = null;
-    function createSource() {
-      if (source) source.close();
-      source = new EventSource("/.change_notification");
-      source.onmessage = function() {
-        var formEl = document.createElement('form');
-        formEl.method = 'POST'
-        formEl.enctype = 'multipart/form-data';
-        for (var [key, val] of Object.entries(%s)) {
-          var i = document.createElement('input');
-          i.hidden = true;
-          i.name = key;
-          i.value = val;
-          formEl.appendChild(i);
-        }
-        document.body.appendChild(formEl);
-        formEl.requestSubmit();
-      };
-      source.onerror = function() { window.setTimeout(createSource, 1000); };
-    }
-    createSource();
-  })();
+  window.__appFormData = %(formdata)s;
+  %(script)s
 </script>
-    """ % formdata_to_json(
-        data
+    """ % {
+        "formdata": formdata_to_json(form_data),
+        "script": re.sub(
+            r"\s+", " ", get_resource_string("static/shim/signage.js").replace("\n", "")
+        ),
+    }
+
+    if sdk_tag in html:
+        html = html.replace(sdk_tag, script, 1)
+    elif match := re.search(r"<\s*script", html, re.I):
+        html = html[: match.start()] + script + html[match.start() :]
+
+    return html
+
+
+_resource_manager = None
+_resource_provider = None
+
+
+def get_resource_string(path):
+    global _resource_manager
+    global _resource_provider
+
+    if _resource_manager is None or _resource_provider is None:
+        from pkg_resources import ResourceManager, get_provider
+
+        _resource_manager = ResourceManager()
+        _resource_provider = get_provider("app_simulator")
+
+    return _resource_provider.get_resource_string(_resource_manager, path).decode(
+        "utf-8"
     )
-
-    if "<head" in html:
-        match_list = re.findall("<head[\\s\\S]*?>", html)
-        split_val = match_list[0]
-    elif "<style" in html:
-        match_list = re.findall("<style[\\s\\S]+?</style>", html)
-        split_val = match_list[-1]
-    elif "<meta" in html:
-        match_list = re.findall("<meta[\\s\\S]+?>", html)
-        split_val = match_list[-1]
-    else:
-        match_list = re.findall("<title[\\s\\S]+?</title>", html)
-        split_val = match_list[-1]
-
-    parts = html.split(split_val)
-    html_new = parts[0] + split_val + script + parts[1]
-
-    return html_new
 
 
 class SimpleResponse:

@@ -403,8 +403,12 @@ class FontDef:
         self.size = size
 
     @property
+    def extension(self):
+        return self.filename.split(".")[1]
+
+    @property
     def blob_path(self):
-        return f"{self.sha[:2]}/{self.sha[2:]}.ttf"
+        return f"{self.sha[:2]}/{self.sha[2:]}.{self.extension}"
 
 
 AVAILABLE_FONTS = {
@@ -413,44 +417,62 @@ AVAILABLE_FONTS = {
         FontDef(
             "Allan-Regular.ttf",
             "Allan Normal",
-            "7149dbb8c888c7fea06553d0c7a6d4190318bfa8",
-            56460,
+            "8f1651ec01b88145a37f69715af9936fee766e5d",
+            44876,
         ),
         FontDef(
             "Allan-Bold.ttf",
             "Allan Bold",
-            "a452d8e0fcfa1a29aed2034988f6b2f8395a5477",
-            115328,
+            "e658858648cdd3d69bab08a1ed6e2d54765e0695",
+            61500,
         ),
         FontDef(
             "Arvo-Regular.ttf",
             "Arvo Normal",
-            "9d5d3fca52ada72c3885b3df7bd77edc3a9a31a5",
-            40340,
+            "3857248afcedf01b6e9dc0048f4ca662bc328493",
+            38596,
         ),
         FontDef(
             "OpenSans-Regular.ttf",
             "Open Sans Normal",
-            "3564ed0b5363df5cf277c16e0c6bedc5a682217f",
-            217360,
+            "73b8e80d4ff1cf32806a12f296754819c17d4eff",
+            129796,
         ),
         FontDef(
             "OpenSans-Italic.ttf",
             "Open Sans Italic",
-            "f1692eac564e95023e4da341a1b89baae7a65155",
-            212896,
+            "8eeed9e71e4f905f8421455810c8f9cebf96aa61",
+            135108,
         ),
         FontDef(
             "OpenSans-Bold.ttf",
             "Open Sans Bold",
-            "c1691e8168b2596af8a00162bac60dbe605e9e36",
-            224592,
+            "266b36edacf112b480a28f0f5acbbe0ebc01b18f",
+            129784,
         ),
         FontDef(
             "OpenSans-BoldItalic.ttf",
             "Open Sans Bold Italic",
-            "cea7b25e625f8f42d09c3034aad8afd826e9941a",
-            213292,
+            "1c28f4b03ffb9b570875af6e0ab5cdada653d61b",
+            135108,
+        ),
+        FontDef(
+            "NotoSans-Regular.ttf",
+            "Noto Sans Normal",
+            "6af0b309f2f2af25bfd0f901ed24bd0527c2cbf4",
+            556216,
+        ),
+        FontDef(
+            "NotoSansCJKjp-Regular.otf",
+            "Noto Sans CJK JP Normal",
+            "7533dabbd7f41ab48213d0b899d715f11f906b57",
+            4548208,
+        ),
+        FontDef(
+            "NotoSans-BoldItalic.ttf",
+            "Noto Sans Bold Italic",
+            "e2104bab749433d65a710c2181bb137b65346c17",
+            401608,
         ),
     ]
 }
@@ -465,7 +487,7 @@ class Font:
     @property
     def url(self):
         font = AVAILABLE_FONTS[self.name]
-        return "https://signagewidgets.net/app-media/" + font.blob_path
+        return "/.font/" + font.blob_path
 
     @property
     def family(self):
@@ -514,8 +536,8 @@ class GoogleSheet:
             return (1, 1)
 
         return (
-            sum((ord(l) - 96) * (26 ** i) for i, l in enumerate(reversed(end_col)))
-            - sum((ord(l) - 96) * (26 ** i) for i, l in enumerate(reversed(start_col)))
+            sum((ord(l) - 96) * (26**i) for i, l in enumerate(reversed(end_col)))
+            - sum((ord(l) - 96) * (26**i) for i, l in enumerate(reversed(start_col)))
             + 1,
             int(end_row) - int(start_row) + 1,
         )
@@ -989,17 +1011,15 @@ class UserMediaField(AdaptableMixin, Field):
 
 DATASINK_TEMPLATE = """
 <script type="text/javascript">
-    (function() {
-      window.%(variable)s = new Promise(function(resolve, reject) {
-        window.addEventListener('DOMContentLoaded', function() {
-          resolve({
-            fields: %(fields)s,
-            source: %(data_source)s,
-            update: new Promise(function() {})
-          });
-        }, false);
+  window.%(variable)s = new Promise(function (resolve) {
+    window.signageLoaded.then(function () {
+      resolve({
+        fields: %(fields)s,
+        source: %(data_source)s,
+        update: new Promise(function () {})
       });
-    })();
+    });
+  });
 </script>
 """
 

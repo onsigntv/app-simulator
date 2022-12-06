@@ -3,7 +3,7 @@
 {% block content %}
 <div class="container">
   <div class="card">
-    <div class="card-header">Directory Files</div>
+    <div class="card-header">Directory <code>{{ path }}</code></div>
     <div class="card-body">
       <h6 class="card-title"></h6>
       {% if files %}
@@ -11,13 +11,11 @@
         {% for file in files %}
           {% if file.is_file %}
             <a href="{{ file.link }}" class="list-group-item list-group-item-action">
-              <i class="fa fa-file" aria-hidden="true" style="margin-right: 5px;"></i>
               {{ file.name }}
             </a>
           {% else %}
             <a href="{{ file.link }}" class="list-group-item list-group-item-action">
-              <i class="fa fa-folder" aria-hidden="true" style="margin-right: 5px;"></i>
-              {{ file.name }}
+              {% if file.is_up %}⬆️{% else %}📁{% endif %}&nbsp;&nbsp;{{ file.name }}
             </a>
           {% endif %}
         {% endfor %}

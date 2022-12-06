@@ -16,12 +16,20 @@
         {% endif %}
       {% endfor %}
     {% else %}
+      {% if warnings.get("missing_loadsdk") %}
+        <div class="alert alert-warning" role="alert">
+          Make sure you include a <code>{% raw %}{{ __loadsdk__ }}{% endraw %}</code> directive in your template. From February 2023 onwards, it will be required in all Apps.
+        </div>
+      {% endif %}
       <h5>App Info</h5>
       <p><strong>Name :</strong><br>{{ title }}</p>
       <h5>App Options</h5>
       <p class="form-text text-muted">The user of this app will be able to configure the following options.</p>
       <form action="{{ file_name }}" method="POST" enctype="multipart/form-data">
       {% for field in form -%}
+        {% if field.label.field_id == "_delay_show" %}
+        <hr>
+        {% endif %}
         {% if field.widget.input_type == "checkbox" -%}
         <div class="form-check" style="margin-bottom: 1rem;">
           {{ field() }}
@@ -32,6 +40,9 @@
             {{ field.label.text }}
             {% if field.flags.required %}<small class="align-top"><strong>[required]</strong></small>{% endif %}
           </label>
+          {% if field.label.field_id == "_playback_info" %}
+            &nbsp;&nbsp;&nbsp;<button type="button" class="btn btn-light btn-sm" id="pbInfoBtn">edit</button>
+          {% endif %}
           {{ field() }}
         {% endif -%}
           {% for error in field.errors -%}
@@ -42,10 +53,28 @@
           {% endif -%}
         </div>
       {% endfor %}
+        <hr>
         <button type="submit" class="btn btn-primary"> Preview </button>
       </form>
     {% endif %}
     </div>
   </div>
 </div>
+
+<script type="text/javascript">
+  document.addEventListener("DOMContentLoaded", function () {
+    var button = document.getElementById("pbInfoBtn");
+    function togglePlaybackInfo () {
+      var toggled = document.getElementById("_playback_info").toggleAttribute("hidden");
+      if (toggled) {
+        button.innerHTML = "edit";
+      } else {
+        button.innerHTML = "done";
+      }
+    }
+    button.addEventListener("click", togglePlaybackInfo, false);
+    togglePlaybackInfo();
+  }, false);
+</script>
+
 {% endblock %}

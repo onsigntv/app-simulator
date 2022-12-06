@@ -1,22 +1,11 @@
 import argparse
 import logging
-import os
 import pathlib
 
 from aiohttp import web
 
-from .routes import (
-    list_form_file,
-    preview_app,
-    change_notification_sse,
-    serve_file_from_uploads,
-    serve_twitter_data,
-    serve_instagram_data,
-)
+from . import routes
 from .storage import clean_storage
-
-
-WORKING_DIR = pathlib.Path.cwd()
 
 
 def parse_args():
@@ -79,7 +68,6 @@ async def middleware(request, handler):
 def main():
     args = parse_args()
 
-    os.chdir(args.path)
     logging.basicConfig(
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         level=logging.DEBUG if args.is_verbose else logging.INFO,
@@ -89,15 +77,17 @@ def main():
         clean_storage()
 
     app = web.Application(middlewares=[middleware])
+    app["base_path"] = pathlib.Path(args.path)
 
-    app.router.add_get("/", list_form_file)
-    app.router.add_get("/.change_notification", change_notification_sse)
-    app.router.add_get("/.uploads/{file_name}", serve_file_from_uploads)
-    app.router.add_post("/.preview/{file_name}", preview_app)
-    app.router.add_post(r"/.preview/{file_name:[^{}/]+}.*", preview_app)
-    app.router.add_get("/.twitter/mock_data", serve_twitter_data)
-    app.router.add_get("/.instagram/mock_data", serve_instagram_data)
-    app.router.add_get(r"/{file_name:[^{}]+}", list_form_file)
+    app.router.add_get("/.change_notification", routes.change_notification_sse)
+    app.router.add_route("*", "/.proxy_request", routes.proxy_request),
+    app.router.add_get("/.uploads/{file_name}", routes.serve_file_from_uploads)
+    app.router.add_get("/.twitter/mock_data", routes.serve_twitter_data)
+    app.router.add_get("/.instagram/mock_data", routes.serve_instagram_data)
+    app.router.add_get(r"/.font/{blob_path:.+}", routes.serve_font)
+    app.router.add_get(r"/.preview/{file_name:.+}", routes.serve_preview_asset)
+    app.router.add_post(r"/.preview/{file_name:.+}", routes.preview_app)
+    app.router.add_get(r"/{file_name:.*}", routes.list_form_file)
 
     web.run_app(app, port=args.port, host=args.host)
 

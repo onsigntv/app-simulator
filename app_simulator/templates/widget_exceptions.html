@@ -2,17 +2,17 @@
 
 {% block content %}
 <div class="container" id="full-container">
-  <div class="card text-white bg-danger">
-    <div class="card-header">Template Exception</div>
+  <div class="card">
+    <div class="card-header text-white bg-danger">Template Exception!</div>
     <div class="list-group list-group-flush">
       {% for error in exceptions %}
-      <li>
+      <div style="padding: 20px;">
         {% if error.error %}
           {{ error.error }}
         {% else %}
           {{ error }}
         {% endif %}
-      </li>
+      </div>
       {% endfor %}
     </div>
   </div>

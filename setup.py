@@ -70,8 +70,8 @@ setuptools.setup(
             "templates/list_files.html",
             "templates/widget_exceptions.html",
             "templates/widget_form.html",
-            "static/shim/events.js",
             "static/shim/Intl.min.js",
+            "static/shim/signage.js",
         ]
     },
     data_files=[(".", ["requirements.txt"])],
