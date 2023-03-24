@@ -334,7 +334,9 @@ async def serve_instagram_data(request):
 async def serve_font(request):
     font_path = request.match_info["blob_path"]
 
-    if font_file := get_file(font_path.replace("/", "")):
+    font_file = get_file(font_path.replace("/", ""))
+
+    if font_file:
         return FileResponse(font_file)
     else:
         import aiohttp

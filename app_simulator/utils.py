@@ -145,7 +145,8 @@ def inject_script_into_html(html, sdk_tag, form_data):
 
     if sdk_tag in html:
         html = html.replace(sdk_tag, script, 1)
-    elif match := re.search(r"<\s*script", html, re.I):
+    elif re.search(r"<\s*script", html, re.I):
+        match = re.search(r"<\s*script", html, re.I)
         html = html[: match.start()] + script + html[match.start() :]
 
     return html
