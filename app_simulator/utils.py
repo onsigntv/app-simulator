@@ -130,14 +130,27 @@ def formdata_to_json(data):
     return json.dumps(_data)
 
 
-def inject_script_into_html(html, sdk_tag, form_data):
+def inject_script_into_html(html, sdk_tag, form_data, attrs):
+    attrs_info = {}
+    for name, attr in attrs:
+        attr_info = {
+            "type": attr["type"],
+            "mode": attr["mode"],
+        }
+        if form_data.get("_attr_" + name):
+            attr_info["playerName"] = attr["label"]
+
+        attrs_info[name] = attr_info
+
     script = """
 <script type="text/javascript">
   window.__appFormData = %(formdata)s;
+  window.__appAttrs = %(attrs_info)s;
   %(script)s
 </script>
     """ % {
         "formdata": formdata_to_json(form_data),
+        "attrs_info": json.dumps(attrs_info or None),
         "script": re.sub(
             r"\s+", " ", get_resource_string("static/shim/signage.js").replace("\n", "")
         ),

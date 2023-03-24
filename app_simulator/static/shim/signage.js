@@ -85,8 +85,10 @@
   });
 
   var playbackInfo = {};
+  var playerAttrs = {};
   try {
     playbackInfo = JSON.parse(window.__appFormData["_playback_info"]) || {};
+    playerAttrs = playbackInfo.player.attrs || {};
   } catch (e) {
     /* noop */
   }
@@ -180,11 +182,17 @@
       try {
         if (name === "__tags__") {
           playbackInfo.player.tags = value;
-        } else {
+        } else if (name in playbackInfo.player.attrs && value !== playbackInfo.player.attrs[name]) {
           playbackInfo.player.attrs[name] = value;
+          dispatch("attrchanged", { detail: { name: name, value: value } }, internalTarget);
         }
       } catch (ex) {
         console.log("Error setting player attribute: ", ex);
+      }
+    },
+    setPlayerAttributes: function (values) {
+      for (var [name, value] of Object.entries(values)) {
+        signage.setPlayerAttribute(name, value);
       }
     },
     setVolume: function (percent) {
@@ -209,6 +217,91 @@
       return window.innerWidth;
     },
   };
+
+  if (window.__appAttrs !== null) {
+    let assertAttrExists = function (name) {
+      if (!(name in window.__appAttrs)) {
+        throw new Error("App attribute does not exist: " + name);
+      }
+    };
+
+    let checkAttrType = function (name, value) {
+      var attrType = window.__appAttrs[name]["type"];
+
+      if (typeof value === attrType || value === null) {
+        return true;
+      }
+
+      if (value instanceof Array) {
+        var elementType;
+        if (attrType === "numberarray") {
+          elementType = "number";
+        } else if (attrType === "stringarray") {
+          elementType = "string";
+        } else {
+          return false;
+        }
+
+        for (var i = 0; i < value.length; i++) {
+          if (typeof value[i] !== elementType) {
+            return false;
+          }
+        }
+
+        return true;
+      }
+
+      return false;
+    };
+
+    window.isAppAttributeConnected = function (name) {
+      assertAttrExists(name);
+      return window.__appAttrs[name]["playerName"] && window.__appAttrs[name]["playerName"] in playerAttrs;
+    };
+
+    window.getAppAttribute = function (name, defaultValue = null) {
+      assertAttrExists(name);
+
+      if (window.__appAttrs[name]["mode"] === "w") {
+        throw new Error("Can't access writeonly app attribute: " + name);
+      }
+
+      var attr = signage.getPlayerAttribute(window.__appAttrs[name]["playerName"]);
+      return attr === null ? defaultValue : attr;
+    };
+
+    window.setAppAttribute = function (name, value) {
+      assertAttrExists(name);
+
+      if (!isAppAttributeConnected(name)) return;
+
+      if (window.__appAttrs[name]["mode"] === "r") {
+        throw new Error("Can't set readonly app attribute: " + name);
+      }
+
+      if (checkAttrType(name, value)) {
+        signage.setPlayerAttribute(window.__appAttrs[name]["playerName"], value);
+      } else {
+        throw new Error("Incorrect value type for app attribute: " + name);
+      }
+    };
+
+    window.setAppAttributes = function (values) {
+      for (var [name, value] of Object.entries(values)) {
+        window.setAppAttribute(name, value);
+      }
+    };
+
+    signage.addEventListener("attrchanged", function (event) {
+      var playerAttr = event.detail.name;
+      var value = event.detail.value;
+
+      var appAttr = Object.keys(window.__appAttrs).find((key) => window.__appAttrs[key]["playerName"] === playerAttr);
+      if (appAttr && isAppAttributeConnected(appAttr)) {
+        dispatch("appattrchanged", { detail: { name: appAttr, value: value } });
+      }
+    });
+  }
 
   document.addEventListener("DOMContentLoaded", function () {
     document.title = "\uD83D\uDED1 Preloading... | " + document.title;

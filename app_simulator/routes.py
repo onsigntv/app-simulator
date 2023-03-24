@@ -202,7 +202,7 @@ async def preview_app(request):
                 content_type="text/html",
             )
 
-        html = inject_script_into_html(html, SDK_TAG, formdata)
+        html = inject_script_into_html(html, SDK_TAG, formdata, config["attrs"])
 
         return Response(text=html, content_type="text/html")
     else:

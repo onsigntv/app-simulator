@@ -8,7 +8,7 @@ import sys
 # The directory containing this file
 HERE = pathlib.Path(__file__).parent
 
-VERSION = "0.9.2"
+VERSION = "1.1.0"
 
 DESCRIPTION = (
     "Assist the development of apps for OnSign TV platform by running them locally."

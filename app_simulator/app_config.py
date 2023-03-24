@@ -88,6 +88,15 @@ DATA_SOURCE_TYPES = {
     "video",
 }
 
+ATTR_TYPES = {
+    "number",
+    "string",
+    "numberarray",
+    "stringarray",
+}
+
+ATTR_MODES = {"r", "w", "rw"}
+
 FETCH_TEMPLATE = """
 <script type="text/plain" id="%(id)s">%(content)s</script>
 <script type="text/javascript">
@@ -305,6 +314,7 @@ def default_jinja_env():
     env.globals["__datasink__"] = env.local_ctx.do_datafeed
     env.globals["__datafeed__"] = env.local_ctx.do_datafeed
     env.globals["__field__"] = lambda *args, **kwargs: ""
+    env.globals["__attr__"] = lambda *args, **kwargs: ""
 
     env.globals["__loadsdk__"] = Markup(SDK_TAG)
 
@@ -714,6 +724,7 @@ def extract_app_config(template_text):
     template = env.from_string(template_text)
 
     app_fields = OrderedDict()
+    app_attrs = OrderedDict()
     exceptions = []
 
     def detect_config(
@@ -826,6 +837,33 @@ def extract_app_config(template_text):
         if name in KNOWN_METAS:
             config[name] = value
 
+    def detect_attr(*, name, type, label, mode, help=None, optional=False):
+        if not re.match("^[a-zA-Z][a-zA-Z0-9_]*$", name):
+            raise ValueError("Invalid App Attribute name: %(name)s" % {"name": name})
+
+        if type not in ATTR_TYPES:
+            raise ValueError("App Attribute type invalid: %(type)s" % {"type": type})
+
+        if mode not in ATTR_MODES:
+            raise ValueError(
+                "App Attribute access mode invalid: %(mode)s" % {"mode": mode}
+            )
+
+        if optional not in {True, False}:
+            raise ValueError(
+                'App Attribute optional parameter requires a Boolean value, got: "%(optional)s"'
+                % {"optional": optional}
+            )
+
+        app_attrs[name] = {
+            "type": type,
+            "label": label,
+            "value": True,
+            "mode": mode,
+            "help_text": help,
+            "required": not optional,
+        }
+
     class DetectLoadSDK:
         def __str__(self):
             if app_fields:
@@ -845,6 +883,7 @@ def extract_app_config(template_text):
             "__datasink__": detect_datafeed,
             "__datafeed__": detect_datafeed,
             "__field__": DataSinkField,
+            "__attr__": detect_attr,
         }
     )
 
@@ -994,6 +1033,7 @@ def extract_app_config(template_text):
     }
 
     config["fields"] = list(map(list, app_fields.items()))
+    config["attrs"] = list(map(list, app_attrs.items()))
     config["exceptions"] = exceptions
 
     try:

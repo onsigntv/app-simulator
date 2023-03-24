@@ -72,6 +72,31 @@ class BootstrapMeta(DefaultMeta):
 def build_form(config):
     fields = OrderedDict()
 
+    for attr_name, attr in config["attrs"]:
+        logger.debug(
+            f"registering app attribute '{attr_name}' of type '{attr['type']}'"
+        )
+
+        description = f"Type: {attr['type']}. "
+        if attr["help_text"]:
+            description += attr["help_text"]
+
+        render_kw = {"class": "form-check-input"}
+
+        if "required" in attr and attr["required"]:
+            validators = [wtforms.validators.InputRequired()]
+            render_kw["hidden"] = "hidden"
+        else:
+            validators = [wtforms.validators.Optional()]
+
+        fields["_attr_" + attr_name] = wtforms.BooleanField(
+            label=attr["label"],
+            description=description,
+            default=True,
+            validators=validators,
+            render_kw=render_kw,
+        )
+
     for name, field in config["fields"]:
         kind = field["type"]
 
