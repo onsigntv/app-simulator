@@ -10,7 +10,7 @@
         {% if error.error %}
           {{ error.error }}
         {% else %}
-          {{ error }}
+          {{ error|safe }}
         {% endif %}
       </div>
       {% endfor %}

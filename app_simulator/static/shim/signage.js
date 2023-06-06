@@ -85,10 +85,8 @@
   });
 
   var playbackInfo = {};
-  var playerAttrs = {};
   try {
     playbackInfo = JSON.parse(window.__appFormData["_playback_info"]) || {};
-    playerAttrs = playbackInfo.player.attrs || {};
   } catch (e) {
     /* noop */
   }
@@ -179,10 +177,18 @@
       }, 100);
     },
     setPlayerAttribute: function (name, value) {
+      function isValidPlayerAttribute(name) {
+        if (name in playbackInfo.player.attrs) {
+          return true;
+        } else if (window.__appAttrs) {
+          return Object.keys(window.__appAttrs).some((appAttr) => window.__appAttrs[appAttr]["playerName"] === name);
+        }
+      }
+      
       try {
         if (name === "__tags__") {
           playbackInfo.player.tags = value;
-        } else if (name in playbackInfo.player.attrs && value !== playbackInfo.player.attrs[name]) {
+        } else if (isValidPlayerAttribute(name) && value !== playbackInfo.player.attrs[name]) {
           playbackInfo.player.attrs[name] = value;
           dispatch("attrchanged", { detail: { name: name, value: value } }, internalTarget);
         }
@@ -256,7 +262,7 @@
 
     window.isAppAttributeConnected = function (name) {
       assertAttrExists(name);
-      return window.__appAttrs[name]["playerName"] && window.__appAttrs[name]["playerName"] in playerAttrs;
+      return "playerName" in window.__appAttrs[name];
     };
 
     window.getAppAttribute = function (name, defaultValue = null) {

@@ -70,6 +70,22 @@ KNOWN_TYPES = {
     "xml",
 }
 
+JS_SUPPORTED_TYPES = {
+    "bool",
+    "choice",
+    "color",
+    "date",
+    "datetime",
+    "float",
+    "multichoice",
+    "number",
+    "paragraph",
+    "richtext",
+    "text",
+    "time",
+    "url",
+}
+
 USER_TYPES = {"audio", "audiolist", "image", "imagelist", "media", "video"}
 
 KNOWN_METAS = {"aspectratio", "caps", "compatibility", "description"}
@@ -265,7 +281,6 @@ def render_app_html(context, path, tracker, **kwargs):
     env = default_jinja_env()
 
     try:
-
         # First we need to convert the data into a template
         template = env.from_string(path.read_text("utf-8"))
 
@@ -735,6 +750,7 @@ def extract_app_config(template_text):
         help=None,
         optional=False,
         *,
+        js=False,
         optgroup=None,
         **kwargs,
     ):
@@ -744,8 +760,21 @@ def extract_app_config(template_text):
             "value": value,
             "help_text": help,
             "required": not bool(optional),
+            "js": js,
             "optgroup": optgroup,
         }
+
+        if js:
+            if type not in JS_SUPPORTED_TYPES:
+                raise ValueError(
+                    """
+                    "%(type)s" type of configuration option "%(name)s" does not support the <code>js</code> parameter.<br>
+                    Check the <a href="https://github.com/onsigntv/apps/blob/master/docs/JSBRIDGE.md#app-configuration-object-api">appConfig object documentation</a> to see which types are supported.
+                    """
+                    % {"type": type, "name": name}
+                )
+
+            config.setdefault("js_app_config", []).append(name)
 
         if type in ("choice", "multichoice"):
             if not isinstance(kwargs.get("choices"), (list, tuple)):
@@ -1047,7 +1076,6 @@ def extract_app_config(template_text):
         for lineno, func, message in extract_from_ast(
             node, GETTEXT_FUNCTIONS, babel_style=False
         ):
-
             if message not in catalog:
                 catalog[message] = {"msgid": message}
 

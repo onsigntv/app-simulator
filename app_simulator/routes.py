@@ -6,6 +6,7 @@ from aiohttp_sse import sse_response
 from aiohttp.web import Response, FileResponse, HTTPNotFound
 from jinja2 import Environment, PackageLoader, select_autoescape
 from multidict import MultiDict
+from wtforms import DateTimeField
 
 from .app_config import SDK_TAG, extract_app_config, render_app_html
 from .form import build_form, ALLOWED_FILE_TYPES
@@ -183,11 +184,25 @@ async def preview_app(request):
     if form.validate():
         logger.debug("form data valid")
         data = {}
+        js_app_config = {}
         for field in form:
             if callable(getattr(field, "adapt", None)):
                 field.adapt()
 
             data[field.name] = field.data
+
+            if field.name in config.get("js_app_config", []) and field.data not in (
+                "",
+                None,
+            ):
+                field_data = field.data
+                if isinstance(field, DateTimeField):
+                    field_data = field.data.isoformat()
+
+                js_app_config[field.name] = field_data
+
+        if js_app_config:
+            js_app_config["__lang__"] = "en"
 
         html, excep = render_app_html(data, path, track_file)
         if html is None:
@@ -202,7 +217,9 @@ async def preview_app(request):
                 content_type="text/html",
             )
 
-        html = inject_script_into_html(html, SDK_TAG, formdata, config["attrs"])
+        html = inject_script_into_html(
+            html, SDK_TAG, formdata, config["attrs"], js_app_config
+        )
 
         return Response(text=html, content_type="text/html")
     else:
