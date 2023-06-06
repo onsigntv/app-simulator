@@ -3,6 +3,7 @@ import re
 from collections import OrderedDict
 
 import wtforms
+from jinja2 import Markup
 from wtforms.form import BaseForm
 from wtforms.meta import DefaultMeta
 from wtforms.validators import Regexp
@@ -10,6 +11,7 @@ from wtforms.widgets import Input, Select, TextArea, TextInput
 
 from .fields import (
     AirportField,
+    AppAttributeField,
     ColorField,
     CurrencyField,
     DataSourceField,
@@ -76,24 +78,22 @@ def build_form(config):
             "registering app attribute '%s' of type '%s'", attr_name, attr["type"]
         )
 
-        description = f"Type: {attr['type']}. "
+        verbose_mode = {"r": "Read only", "w": "Write only", "rw": "Read and Write"}
+        description = Markup(
+            f"Type: <b>{attr['type']}</b><br>Access Mode: <b>{verbose_mode[attr['mode']]}</b>"
+        )
         if attr["help_text"]:
-            description += attr["help_text"]
+            description = Markup(f"{attr['help_text']}<br>") + description
 
-        render_kw = {"class": "form-check-input"}
-
-        if "required" in attr and attr["required"]:
-            validators = [wtforms.validators.InputRequired()]
-            render_kw["hidden"] = "hidden"
-        else:
-            validators = [wtforms.validators.Optional()]
-
-        fields["_attr_" + attr_name] = wtforms.BooleanField(
-            label=attr["label"],
+        fields[attr_name] = AppAttributeField(
+            attr,
             description=description,
-            default=True,
-            validators=validators,
-            render_kw=render_kw,
+            validators=[wtforms.validators.Optional()],
+            render_kw={
+                "class": "form-control",
+                "placeholder": "Default Value",
+                "style": "margin-top: 3px",
+            },
         )
 
     for name, field in config["fields"]:

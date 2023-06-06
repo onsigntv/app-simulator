@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import urllib
 
@@ -26,6 +27,13 @@ logger = logging.getLogger("onsigntv.routes")
 
 
 tracked_files = {}
+
+
+def get_app_kind(config):
+    if config.get("automation") or config.get("automation-app"):
+        return "Automation App"
+    elif config.get("audio") or config.get("audio-app"):
+        return "Audio App"
 
 
 def track_file(x):
@@ -67,9 +75,12 @@ async def list_form_file(request):
             text=jinja_env.get_template("widget_form.html").render(
                 {
                     "form": form,
-                    "warnings": config["warnings"],
                     "title": config["title"],
+                    "description": config.get("description"),
+                    "kind": get_app_kind(config),
+                    "has_attributes": any(config["attrs"]),
                     "file_name": f"/.preview/{urllib.parse.quote(name)}",
+                    "warnings": config["warnings"],
                 },
             ),
             content_type="text/html",
@@ -183,12 +194,30 @@ async def preview_app(request):
     if form.validate():
         logger.debug("form data valid")
         data = {}
+        attrs_info = {}
         js_app_config = {}
         for field in form:
             if callable(getattr(field, "adapt", None)):
                 field.adapt()
 
-            data[field.name] = field.data
+            if getattr(field, "is_attribute", None):
+                default = field.data
+                if field.attr_type in {"numberarray", "stringarray"}:
+                    try:
+                        default = json.loads(default)
+                        if not isinstance(default, list):
+                            raise ValueError()
+                    except ValueError:
+                        default = None
+
+                attrs_info[field.name] = {
+                    "type": field.attr_type,
+                    "mode": field.mode,
+                    "playerName": field.player_name,
+                    "default": default,
+                }
+            else:
+                data[field.name] = field.data
 
             if field.name in config.get("js_app_config", []) and field.data not in (
                 "",
@@ -217,7 +246,7 @@ async def preview_app(request):
             )
 
         html = inject_script_into_html(
-            html, SDK_TAG, formdata, config["attrs"], js_app_config
+            html, SDK_TAG, formdata, attrs_info, js_app_config
         )
 
         return Response(text=html, content_type="text/html")
@@ -233,6 +262,9 @@ async def preview_app(request):
                 {
                     "form": form,
                     "title": config["title"],
+                    "description": config.get("description"),
+                    "kind": get_app_kind(config),
+                    "has_attributes": any(config["attrs"]),
                     "file_name": f"/.preview/{urllib.parse.quote(name)}",
                     "warnings": config["warnings"],
                 },

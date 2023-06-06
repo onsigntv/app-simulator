@@ -26,6 +26,14 @@ def get_file(filename):
         return str(path)
 
 
+def create_file_path(filename):
+    path = storage_path.joinpath(filename)
+    if not path.exists():
+        path.touch(exist_ok=True)
+
+    return str(path)
+
+
 def clean_storage():
     import shutil
 

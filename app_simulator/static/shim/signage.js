@@ -33,13 +33,73 @@
     if (origFetch) {
       window.fetch = function (resource, options) {
         if (Object.getPrototypeOf(resource) === Request.prototype) {
-          resource = new Request(resource, { url: "/.proxy_request?url=" + encodeURIComponent(resource.url) });
+          resource = new Request(resource, {
+            url: "/.proxy_request?url=" + encodeURIComponent(resource.url),
+          });
         } else {
           resource = "/.proxy_request?url=" + encodeURIComponent(resource);
         }
         return origFetch(resource, options);
       };
     }
+  }
+
+  if (window.__appFormData["_toast_attr_change"]) {
+    var toastTimer = null;
+    var toastArea = null;
+    var toastMsgs = [];
+    var toast = null;
+
+    document.addEventListener("appattrchanged", function (e) {
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () {
+        function fadeToast(op) {
+          if (toastTimer) {
+            /* Check if a new attr has been set while the toast is fading
+            away, if so, the fading must stop. */
+            toastArea.style.opacity = "0.7";
+          } else if (op >= 0) {
+            toastArea.style.opacity = parseFloat(op / 100);
+            setTimeout(function () {
+              fadeToast(op - 1);
+            }, 10);
+          } else {
+            toastArea.remove();
+            toastArea = null;
+          }
+        }
+
+        toastTimer = null;
+        fadeToast(70);
+      }, 5000);
+
+      var textSpan = document.createElement("span");
+      textSpan.style = "display: flex;flex-direction: column;max-width: 100%;margin: 3px auto";
+      var txt = `Attribute "${e.detail.name}" = ${JSON.stringify(e.detail.value)}`;
+      textSpan.innerText = txt;
+      console.log(txt);
+
+      toastMsgs.push(textSpan);
+      if (toastMsgs.length > 10) {
+        toastMsgs[0].remove();
+        toastMsgs.splice(0, 1);
+      }
+
+      if (!toastArea) {
+        toastArea = document.createElement("div");
+        toastArea.style =
+          "position: fixed;left: 0;right: 0;display: flex;justify-content: center;align-items: center;z-index: 1000000;opacity:0.7;";
+
+        toast = document.createElement("div");
+        toast.style =
+          "position: fixed;bottom: 10%;background-color: black;color: white;border-radius: 30px;padding: 8px 20px;text-align: center;font-family: monospace; box-shadow: 0 5px 9px 0 rgba(0, 0, 0, 0.2), 0 7px 21px 0 rgba(0, 0, 0, 0.19);";
+
+        toastArea.appendChild(toast);
+        document.body.appendChild(toastArea);
+      }
+
+      toast.appendChild(textSpan);
+    });
   }
 
   var prevWidth = null;
@@ -60,7 +120,9 @@
 
   function dispatchSize() {
     if (window.innerWidth !== prevWidth || window.innerHeight !== prevHeight) {
-      dispatch("sizechanged", { detail: { width: window.innerWidth, height: window.innerHeight } });
+      dispatch("sizechanged", {
+        detail: { width: window.innerWidth, height: window.innerHeight },
+      });
       prevWidth = window.innerWidth;
       prevHeight = window.innerHeight;
     }
@@ -119,7 +181,11 @@
       return new Promise((resolve, reject) => {
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition((pos) => {
-            resolve({ src: "ip", lat: pos.coords.latitude, lng: pos.coords.longitude });
+            resolve({
+              src: "ip",
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+            });
           });
         } else {
           reject("Could not get geo location");
@@ -150,7 +216,11 @@
     ledOff: function () {},
     ledOn: function (red, green, blue) {},
     log: function (level, domain, message) {
-      console.log("LOG ENTRY", { level: level, domain: domain, message: message });
+      console.log("LOG ENTRY", {
+        level: level,
+        domain: domain,
+        message: message,
+      });
     },
     playAudio: function (uri) {
       var audio = new Audio(uri);
@@ -165,7 +235,12 @@
       internalTarget.removeEventListener.apply(internalTarget, arguments);
     },
     sendEvent: function (level, code, message, extra) {
-      console.log("SENT EVENT", { level: level, code: code, message: message, extra: extra });
+      console.log("SENT EVENT", {
+        level: level,
+        code: code,
+        message: message,
+        extra: extra,
+      });
     },
     setBrightness: function (percent) {
       var value = parseInt(percent, 10);
@@ -262,7 +337,7 @@
 
     window.isAppAttributeConnected = function (name) {
       assertAttrExists(name);
-      return "playerName" in window.__appAttrs[name];
+      return window.__appAttrs[name]["playerName"] in playbackInfo.player.attrs;
     };
 
     window.getAppAttribute = function (name, defaultValue = null) {
@@ -273,7 +348,8 @@
       }
 
       var attr = signage.getPlayerAttribute(window.__appAttrs[name]["playerName"]);
-      return attr === null ? defaultValue : attr;
+
+      return attr ? attr : window.__appAttrs[name]["default"] ? window.__appAttrs[name]["default"] : defaultValue;
     };
 
     window.setAppAttribute = function (name, value) {

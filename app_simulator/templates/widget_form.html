@@ -23,32 +23,38 @@
       {% endif %}
       <h5>App Info</h5>
       <p><strong>Name :</strong><br>{{ title }}</p>
-      <h5>App Options</h5>
-      <p class="form-text text-muted">The user of this app will be able to configure the following options.</p>
+      {% if description %}<p><strong>Description :</strong><br>{{ description }}</p>{% endif %}
+      {% if kind %}<p><strong>Kind :</strong><br>{{ kind }}</p>{% endif %}
       <form action="{{ file_name }}" method="POST" enctype="multipart/form-data">
-      {% set attrsection = namespace(is_open=false) %}
+      {% if has_attributes %}
+        <hr>
+        <h5>App Attributes</h5>
+        <small class="form-text text-muted">Check the <a href="https://github.com/onsigntv/apps/tree/master/docs/ATTRS.md">App Attributes API documentation</a> for how to declare and access attributes.</small>
+        <p class="form-text text-muted">This app contains attributes that are connected to the following player attributes. The user will have to choose which player attributes to connect to.</p>
+      {% endif %}
+      {% set optsection = namespace(is_open=false) %}
       {% for field in form -%}
-        {% if field.label.field_id.startswith("_attr_") and not attrsection.is_open %}
-          {% set attrsection.is_open = True %}
-          <h5>App Attributes</h5>
-          <small class="form-text text-muted">Check the <a href="https://github.com/onsigntv/apps/tree/master/docs/ATTRS.md">App Attributes API documentation</a> for how to declare and access attributes.</small>
-          <p class="form-text text-muted">This app contains attributes that are connected to the following player attributes. The user will have to choose which player attributes to connect to.</p>
-        {% elif attrsection.is_open and not field.label.field_id.startswith("_attr_") %}
-          {% set attrsection.is_open = False %}
+        {% if field.label.field_id == "_delay_show" %}
+          {% set optsection.is_open = True %}
           <hr>
-        {% elif field.label.field_id == "_delay_show" %}
+          <h5>Simulator Options</h5>
+        {% endif %}
+        {% if not field.is_attribute and not optsection.is_open %}
+          {% set optsection.is_open = True %}
           <hr>
+          <h5>App Options</h5>
+          <p class="form-text text-muted">The user of this app will be able to configure the following options.</p>
         {% endif %}
         {% if field.widget.input_type == "checkbox" -%}
         <div class="form-check" style="margin-bottom: 1rem;">
           {{ field() }}
           <label class="form-check-label" for="{{ field.label.field_id }}">{{ field.label.text }}</label>
-          {% if field.label.field_id.startswith("_attr_") and not field.flags.required %}
-            <small class="align-top"><strong>[optional]</strong></small>
-          {% endif %}
         {% else -%}
         <div class="form-group">
-          <label for="{{ field.label.field_id }}">
+          <label for="{{ field.label.field_id }}" {% if field.is_attribute %}style="margin-bottom: auto"{% endif %}>
+            {% if field.is_attribute and not field.required %}
+              <input data-attr="{{ field.label.field_id }}" data-label="{{ field.label.text }}" class="connect-attr form-check-label" type="checkbox" checked="true">
+            {% endif %}
             {{ field.label.text }}
             {% if field.flags.required %}<small class="align-top"><strong>[required]</strong></small>{% endif %}
           </label>
@@ -86,7 +92,35 @@
     }
     button.addEventListener("click", togglePlaybackInfo, false);
     togglePlaybackInfo();
+
+    function toggleAttrConnection(checkbox) {
+      var textArea = document.getElementById("_playback_info");
+      var pbInfo = JSON.parse(textArea.value);
+
+      if (checkbox.checked) {
+        pbInfo.player.attrs[checkbox.dataset.label] = null;
+      } else {
+        delete pbInfo.player.attrs[checkbox.dataset.label];
+      }
+
+      var defaultValueInput = document.getElementById(checkbox.dataset.attr);
+      if (defaultValueInput) {
+        defaultValueInput.hidden = !checkbox.checked;
+        if (!checkbox.checked) defaultValueInput.value = null;
+      }
+
+      textArea.value = JSON.stringify(pbInfo, null, 2);
+    }
+
+    Array.from(document.getElementsByClassName("connect-attr")).forEach(function(checkbox) {
+      checkbox.addEventListener("click", function() {
+        toggleAttrConnection(this);
+      });
+
+      toggleAttrConnection(checkbox);
+    });
   }, false);
+
 </script>
 
 {% endblock %}

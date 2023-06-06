@@ -87,7 +87,16 @@ JS_SUPPORTED_TYPES = {
 
 USER_TYPES = {"audio", "audiolist", "image", "imagelist", "media", "video"}
 
-KNOWN_METAS = {"aspectratio", "caps", "compatibility", "description"}
+KNOWN_METAS = {
+    "aspectratio",
+    "audio",
+    "audio-app",
+    "caps",
+    "compatibility",
+    "description",
+    "automation",
+    "automation-app",
+}
 
 DATA_SOURCE_TYPES = {
     "boolean",
@@ -707,6 +716,7 @@ class HTMLTemplateParser(HTMLParser):
         self.variables = []
         self.metas = {}
         self.loadsdk_error = False
+        self.has_script = False
 
     def handle_comment(self, data):
         if data == "__loadsdk__" and self.variables:
@@ -722,6 +732,8 @@ class HTMLTemplateParser(HTMLParser):
             tag == "meta" and attrs.get("content") and attrs.get("name") in KNOWN_METAS
         ):
             self.metas[attrs["name"]] = attrs["content"]
+        elif tag == "script":
+            self.has_script = True
 
     def handle_endtag(self, tag):
         self._in_title = False
@@ -921,7 +933,7 @@ def extract_app_config(template_text):
     config["warnings"] = {}
 
     # After SDK_WARNING_EXPIRY_DATE, not loading sdk will be considered an error.
-    if not config.get("sdk"):
+    if parser.has_script and not config.get("sdk"):
         if datetime.datetime.now().strftime("%Y-%m-%d") >= SDK_WARNING_EXPIRY_DATE:
             raise ValueError("Missing {{ __loadsdk__ }} tag in app.")
         else:
@@ -1014,6 +1026,15 @@ def extract_app_config(template_text):
             </a> issues by proxying uses of <code>fetch</code> or <code>XMLHttpRequest</code>
             """
         ),
+        "required": None,
+        "optgroup": None,
+    }
+
+    app_fields["_toast_attr_change"] = {
+        "type": "bool",
+        "label": "Show Notification on App Attribute Change",
+        "value": False,
+        "help_text": "Display a toast on the bottom of the screen whenever an app attributes value has changed",
         "required": None,
         "optgroup": None,
     }

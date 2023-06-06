@@ -129,18 +129,7 @@ def formdata_to_json(data):
     return json.dumps(_data)
 
 
-def inject_script_into_html(html, sdk_tag, form_data, attrs, js_app_config):
-    attrs_info = {}
-    for name, attr in attrs:
-        attr_info = {
-            "type": attr["type"],
-            "mode": attr["mode"],
-        }
-        if form_data.get("_attr_" + name):
-            attr_info["playerName"] = attr["label"]
-
-        attrs_info[name] = attr_info
-
+def inject_script_into_html(html, sdk_tag, form_data, attrs_info, js_app_config):
     app_config = ""
     if js_app_config:
         app_config = f"window.appConfig = {json.dumps(js_app_config)};"
@@ -154,7 +143,7 @@ def inject_script_into_html(html, sdk_tag, form_data, attrs, js_app_config):
 </script>
     """.format(
         form_data=formdata_to_json(form_data),
-        attrs_info=json.dumps(attrs_info or None),
+        attrs_info=json.dumps(attrs_info),
         app_config=app_config,
         script=re.sub(
             r"\s+", " ", get_resource_string("static/shim/signage.js").replace("\n", "")

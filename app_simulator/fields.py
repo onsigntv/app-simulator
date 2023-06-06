@@ -8,11 +8,11 @@ from collections import OrderedDict
 import jinja2
 import pytz
 from wtforms import Field, IntegerField, SelectField, StringField, validators
-from wtforms.widgets import FileInput, Input
+from wtforms.widgets import FileInput, Input, TextInput
 
 from . import utils
 from .samples import INSTAGRAM_FEED, TWITTER_FEED, VIDEOS
-from .storage import get_file
+from .storage import create_file_path, get_file, save_file
 
 logger = logging.getLogger("onsigntv.fields")
 
@@ -981,7 +981,7 @@ class UserMediaField(AdaptableMixin, Field):
 
         mimetypes.init()
 
-        if not self.multiple:
+        if not self.multiple or isinstance(self.data, str):
             self.data = [self.data]
 
         files = []
@@ -989,7 +989,12 @@ class UserMediaField(AdaptableMixin, Field):
         for file_name in self.data:
             file_path = get_file(file_name)
             if not file_path:
-                raise ValueError("received invalid form data")
+                file_path = create_file_path(file_name)
+                try:
+                    with open(file_path, "rb") as file:
+                        save_file(file_path, file.read())
+                except Exception:
+                    raise ValueError("Received invalid media form data")
 
             file_type = mimetypes.guess_type(file_path)[0].split("/")[0]
             if file_type == "image":
@@ -1127,6 +1132,28 @@ class DataSourceItem:
                 ),
             }
         )
+
+
+class AppAttributeField(StringField):
+    def __init__(self, attr, **kwargs):
+        self.required = attr["required"]
+        self.mode = attr["mode"]
+        self.attr_type = attr["type"]
+        self.player_name = kwargs["label"] = attr["label"]
+        self.is_attribute = True
+
+        if self.attr_type == "number":
+            kwargs["widget"] = Input(input_type="number")
+        else:
+            kwargs["widget"] = TextInput()
+
+        super().__init__(**kwargs)
+
+    def __call__(self):
+        if self.mode in {"rw", "r"}:
+            return super().__call__()
+
+        return ""
 
 
 class DataSourceField(AdaptableMixin, IntegerField):
