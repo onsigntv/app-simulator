@@ -6,7 +6,7 @@ import wtforms
 from wtforms.form import BaseForm
 from wtforms.meta import DefaultMeta
 from wtforms.validators import Regexp
-from wtforms.widgets import TextInput, Input, TextArea, Select
+from wtforms.widgets import Input, Select, TextArea, TextInput
 
 from .fields import (
     AirportField,
@@ -22,7 +22,6 @@ from .fields import (
     UserMediaField,
     WebFeedField,
 )
-
 
 logger = logging.getLogger("onsigntv.form")
 
@@ -74,7 +73,7 @@ def build_form(config):
 
     for attr_name, attr in config["attrs"]:
         logger.debug(
-            f"registering app attribute '{attr_name}' of type '{attr['type']}'"
+            "registering app attribute '%s' of type '%s'", attr_name, attr["type"]
         )
 
         description = f"Type: {attr['type']}. "
@@ -104,7 +103,7 @@ def build_form(config):
         help_text = field["help_text"]
 
         if not name.startswith("_"):
-            logger.debug(f"registering field '{name}' of type '{kind}'")
+            logger.debug("registering field '%s' of type '%s'", name, kind)
 
         if "required" in field and field["required"]:
             validators = [wtforms.validators.InputRequired()]

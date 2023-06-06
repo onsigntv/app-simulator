@@ -11,13 +11,12 @@ import uuid
 from collections import OrderedDict
 from html.parser import HTMLParser
 
-from jinja2 import nodes, Undefined, StrictUndefined, Markup
+from jinja2 import Markup, StrictUndefined, Undefined, nodes
 from jinja2.exceptions import TemplateSyntaxError
-from jinja2.ext import Extension, GETTEXT_FUNCTIONS, extract_from_ast
+from jinja2.ext import GETTEXT_FUNCTIONS, Extension, extract_from_ast
 from jinja2.sandbox import ImmutableSandboxedEnvironment
 
-from . import utils, samples
-
+from . import samples, utils
 
 _local = threading.local()
 
@@ -160,7 +159,7 @@ class MediaItem:
 
 class ConfigurableWidgetMedia:
     def __init__(self, path, tracker):
-        logger.debug(f"register widget media: {path}")
+        logger.debug("register widget media: %s", path)
         self._path = path
         self._tracker = tracker
         self._subfiles = {
@@ -243,7 +242,7 @@ class LocalContextManager:
         )
 
     def do_fetch_sheet(self, value):
-        from .fields import GoogleSheetsURLField, GoogleSheet
+        from .fields import GoogleSheet, GoogleSheetsURLField
 
         match = GoogleSheetsURLField.RE_SHEET_ID.match(value)
         return GoogleSheet(match.groups(1))
@@ -381,7 +380,7 @@ def s_rgba(value):
 
 def rgb_s(r, g, b, a=1.0):
     if a == 1.0:
-        return "#%02x%02x%02x" % tuple(round(c * 255) for c in (r, g, b))
+        return "#{:02x}{:02x}{:02x}".format(*tuple(round(c * 255) for c in (r, g, b)))
     else:
         return "rgba(%i,%i,%i,%.3f)" % tuple([round(c * 255) for c in (r, g, b)] + [a])
 
@@ -470,7 +469,7 @@ def do_numberfmt(number, decimal_sep=".", thousand_sep=".", decimal_pos=2, group
         # scientific notation to avoid high memory usage in {:f}'.format().
         _, digits, exponent = number.as_tuple()
         if abs(exponent) + len(digits) > 200:
-            number = "{:e}".format(number)
+            number = f"{number:e}"
             coefficient, exponent = number.split("e")
             # Format the coefficient.
             coefficient = do_numberfmt(
@@ -480,9 +479,9 @@ def do_numberfmt(number, decimal_sep=".", thousand_sep=".", decimal_pos=2, group
                 decimal_pos,
                 grouping,
             )
-            return "{}e{}".format(coefficient, exponent)
+            return f"{coefficient}e{exponent}"
         else:
-            str_number = "{:f}".format(number)
+            str_number = f"{number:f}"
     else:
         str_number = str(number)
     if str_number[0] == "-":
@@ -535,10 +534,10 @@ def do_slugify(value):
 
 
 def do_qrcode(value):
+    from io import BytesIO
+
     import qrcode
     import qrcode.image.svg
-
-    from io import BytesIO
 
     qr_svg = qrcode.make(value, image_factory=qrcode.image.svg.SvgPathImage)
 
@@ -590,7 +589,7 @@ class LenientJSONEncoder(json.JSONEncoder):
 
             hours = minutes // 60
             minutes = minutes % 60
-            ms = ".{:06d}".format(microseconds) if microseconds else ""
+            ms = f".{microseconds:06d}" if microseconds else ""
             return "{}P{}DT{:02d}H{:02d}M{:02d}{}S".format(
                 sign, days, hours, minutes, seconds, ms
             )
@@ -661,7 +660,7 @@ class LenientUndefined(Undefined):
 
 
 class ErrorExtension(Extension):
-    tags = set(["error"])
+    tags = {"error"}
 
     def parse(self, parser):
         lineno = next(parser.stream).lineno
@@ -717,7 +716,7 @@ class HTMLTemplateParser(HTMLParser):
         attrs = dict(attrs)
         self._in_title = tag == "title"
 
-        if tag == "meta" and all([attrs.get(a) for a in ("label", "name", "type")]):
+        if tag == "meta" and all(attrs.get(a) for a in ("label", "name", "type")):
             self.variables.append((self.getpos(), attrs))
         elif (
             tag == "meta" and attrs.get("content") and attrs.get("name") in KNOWN_METAS
@@ -768,10 +767,11 @@ def extract_app_config(template_text):
             if type not in JS_SUPPORTED_TYPES:
                 raise ValueError(
                     """
-                    "%(type)s" type of configuration option "%(name)s" does not support the <code>js</code> parameter.<br>
+                    "{type}" type of configuration option "{name}" does not support the <code>js</code> parameter.<br>
                     Check the <a href="https://github.com/onsigntv/apps/blob/master/docs/JSBRIDGE.md#app-configuration-object-api">appConfig object documentation</a> to see which types are supported.
-                    """
-                    % {"type": type, "name": name}
+                    """.format(
+                        type=type, name=name
+                    )
                 )
 
             config.setdefault("js_app_config", []).append(name)
@@ -779,34 +779,27 @@ def extract_app_config(template_text):
         if type in ("choice", "multichoice"):
             if not isinstance(kwargs.get("choices"), (list, tuple)):
                 raise ValueError(
-                    'A "choices" argument is required and must be a list: %(name)s'
-                    % {"name": name}
+                    f'A "choices" argument is required and must be a list: {name}'
                 )
 
             for choice in kwargs["choices"]:
                 if not isinstance(choice, (list, tuple)):
-                    raise ValueError(
-                        'Each item in "choices" must be a list: %(name)s'
-                        % {"name": name}
-                    )
+                    raise ValueError(f'Each item in "choices" must be a list: {name}')
 
                 if len(choice) != 2:
                     raise ValueError(
-                        'Each item in "choices" must have two strings (name, label): %(name)s'
-                        % {"name": name}
+                        f'Each item in "choices" must have two strings (name, label): {name}'
                     )
 
                 if not (isinstance(choice[0], str) and isinstance(choice[1], str)):
                     raise ValueError(
-                        'Each item in "choices" must have two strings (name, label): %(name)s'
-                        % {"name": name}
+                        f'Each item in "choices" must have two strings (name, label): {name}'
                     )
 
             if value:
                 if value not in [choice[0] for choice in kwargs["choices"]]:
                     raise ValueError(
-                        'Default value must be present in "choices" argument: %(name)s'
-                        % {"name": name}
+                        f'Default value must be present in "choices" argument: {name}'
                     )
             else:
                 field["value"] = kwargs["choices"][0][0]
@@ -818,10 +811,10 @@ def extract_app_config(template_text):
     class DataSinkField:
         def __init__(self, *, name, type, label, help=None, optional=False):
             if not re.match("^[a-zA-Z][a-zA-Z0-9_]*$", name):
-                raise ValueError("Invalid field name: %(name)s" % {"name": name})
+                raise ValueError(f"Invalid field name: {name}")
 
             if type not in DATA_SOURCE_TYPES:
-                raise ValueError("Data source type invalid: %(type)s" % {"type": type})
+                raise ValueError(f"Data source type invalid: {type}")
 
             self.name = name
             self.type = type
@@ -830,7 +823,7 @@ def extract_app_config(template_text):
             self.required = not bool(optional)
 
         def __repr__(self):
-            return "<DataSinkField {}>".format(self.as_dict())
+            return f"<DataSinkField {self.as_dict()}>"
 
         def as_dict(self):
             return self.__dict__
@@ -839,7 +832,7 @@ def extract_app_config(template_text):
         *, name, label, fields, help=None, optional=False, optgroup=None
     ):
         if not re.match("^[a-zA-Z][a-zA-Z0-9_]*$", name):
-            raise ValueError("Invalid data feed name: %(name)s" % {"name": name})
+            raise ValueError(f"Invalid data feed name: {name}")
 
         if not isinstance(fields, list):
             raise ValueError("Data feed fields must be a list")
@@ -847,7 +840,7 @@ def extract_app_config(template_text):
         if not fields:
             raise ValueError("Data feed fields must not be empty")
 
-        if not all([isinstance(f, DataSinkField) for f in fields]):
+        if not all(isinstance(f, DataSinkField) for f in fields):
             raise ValueError("Data feed fields must use __field__ constructor")
 
         field_datafeed = {
@@ -868,20 +861,17 @@ def extract_app_config(template_text):
 
     def detect_attr(*, name, type, label, mode, help=None, optional=False):
         if not re.match("^[a-zA-Z][a-zA-Z0-9_]*$", name):
-            raise ValueError("Invalid App Attribute name: %(name)s" % {"name": name})
+            raise ValueError(f"Invalid App Attribute name: {name}")
 
         if type not in ATTR_TYPES:
-            raise ValueError("App Attribute type invalid: %(type)s" % {"type": type})
+            raise ValueError(f"App Attribute type invalid: {type}")
 
         if mode not in ATTR_MODES:
-            raise ValueError(
-                "App Attribute access mode invalid: %(mode)s" % {"mode": mode}
-            )
+            raise ValueError(f"App Attribute access mode invalid: {mode}")
 
         if optional not in {True, False}:
             raise ValueError(
-                'App Attribute optional parameter requires a Boolean value, got: "%(optional)s"'
-                % {"optional": optional}
+                f'App Attribute optional parameter requires a Boolean value, got: "{optional}"'
             )
 
         app_attrs[name] = {
@@ -958,17 +948,13 @@ def extract_app_config(template_text):
 
             if field["type"] in ("choice", "multichoice"):
                 if not field.get("value"):
-                    raise ValueError(
-                        "Choice variable requires a value: %(name)s" % {"name": name}
-                    )
+                    raise ValueError(f"Choice variable requires a value: {name}")
 
                 if name not in app_fields:
                     app_fields[name] = field
                     app_fields[name]["choices"] = [[field["value"], field["label"]]]
                 elif app_fields[name]["type"] not in ("choice", "multichoice"):
-                    raise ValueError(
-                        "Choice variable configured wrong: %(name)s" % {"name": name}
-                    )
+                    raise ValueError(f"Choice variable configured wrong: {name}")
                 else:
                     app_fields[name]["choices"].append([field["value"], field["label"]])
             else:
@@ -982,7 +968,7 @@ def extract_app_config(template_text):
             choices = field["choices"]
 
             field["label"] = ""
-            if all([re.match(r".*\S.*:.*\S.*", choice[1]) for choice in choices]):
+            if all(re.match(r".*\S.*:.*\S.*", choice[1]) for choice in choices):
                 field["label"] = choices[0][1].split(":", 1)[0].strip()
 
                 for choice in choices:
@@ -990,25 +976,16 @@ def extract_app_config(template_text):
 
     for name, field in app_fields.items():
         if not re.match("^[a-zA-Z][a-zA-Z0-9_]*$", name):
-            raise ValueError(
-                {"error": "Invalid variable name: %(name)s" % {"name": name}}
-            )
+            raise ValueError({"error": f"Invalid variable name: {name}"})
 
         if name in env.globals or name in BANNED_NAMES:
-            raise ValueError(
-                {"error": "Invalid variable name: %(name)s" % {"name": name}}
-            )
+            raise ValueError({"error": f"Invalid variable name: {name}"})
 
         if field["type"] not in KNOWN_TYPES | {"datafeed"}:
-            raise ValueError(
-                {"error": "Invalid variable type: %(name)s" % {"name": name}}
-            )
+            raise ValueError({"error": f"Invalid variable type: {name}"})
 
         if field["type"] in USER_TYPES and field.get("value"):
-            raise ValueError(
-                "User variables cannot contain default values: %(name)s"
-                % {"name": name}
-            )
+            raise ValueError(f"User variables cannot contain default values: {name}")
 
     app_fields["_delay_show"] = {
         "type": "bool",

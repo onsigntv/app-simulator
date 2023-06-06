@@ -6,7 +6,6 @@ import subprocess
 import time
 from urllib import request
 
-
 logger = logging.getLogger("onsigntv.utils")
 
 
@@ -148,19 +147,19 @@ def inject_script_into_html(html, sdk_tag, form_data, attrs, js_app_config):
 
     script = """
 <script type="text/javascript">
-  window.__appFormData = %(formdata)s;
-  window.__appAttrs = %(attrs_info)s;
-  %(app_config)s
-  %(script)s
+  window.__appFormData = {form_data};
+  window.__appAttrs = {attrs_info};
+  {app_config}
+  {script}
 </script>
-    """ % {
-        "formdata": formdata_to_json(form_data),
-        "attrs_info": json.dumps(attrs_info or None),
-        "app_config": app_config,
-        "script": re.sub(
+    """.format(
+        form_data=formdata_to_json(form_data),
+        attrs_info=json.dumps(attrs_info or None),
+        app_config=app_config,
+        script=re.sub(
             r"\s+", " ", get_resource_string("static/shim/signage.js").replace("\n", "")
         ),
-    }
+    )
 
     if sdk_tag in html:
         html = html.replace(sdk_tag, script, 1)
@@ -200,7 +199,7 @@ class SimpleResponse:
         self.headers = headers
 
     def __repr__(self):
-        return "<Response {}, data={}>".format(self.url, self.data)
+        return f"<Response {self.url}, data={self.data}>"
 
     def json(self):
         return json.loads(self.data)

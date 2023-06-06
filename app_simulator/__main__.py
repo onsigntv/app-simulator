@@ -80,7 +80,7 @@ def main():
     app["base_path"] = pathlib.Path(args.path)
 
     app.router.add_get("/.change_notification", routes.change_notification_sse)
-    app.router.add_route("*", "/.proxy_request", routes.proxy_request),
+    app.router.add_route("*", "/.proxy_request", routes.proxy_request)
     app.router.add_get("/.uploads/{file_name}", routes.serve_file_from_uploads)
     app.router.add_get("/.twitter/mock_data", routes.serve_twitter_data)
     app.router.add_get("/.instagram/mock_data", routes.serve_instagram_data)

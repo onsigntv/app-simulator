@@ -1,9 +1,8 @@
-import distutils
 import os
 import pathlib
-import setuptools
-import shutil
 import sys
+
+import setuptools
 
 # The directory containing this file
 HERE = pathlib.Path(__file__).parent

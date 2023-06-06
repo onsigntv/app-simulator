@@ -1,8 +1,0 @@
-#!/bin/sh
-OUTPUT=$(black --check . 2>&1)
-if [ $? -ne 0 ]
-then
-	echo "$OUTPUT"
-	echo "pre-commit failed: fix formatting issues with black before committing"
-	exit 1
-fi

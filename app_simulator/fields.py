@@ -7,13 +7,12 @@ from collections import OrderedDict
 
 import jinja2
 import pytz
-from wtforms import validators, Field, SelectField, StringField, IntegerField
-from wtforms.widgets import Input, FileInput
+from wtforms import Field, IntegerField, SelectField, StringField, validators
+from wtforms.widgets import FileInput, Input
 
 from . import utils
 from .samples import INSTAGRAM_FEED, TWITTER_FEED, VIDEOS
 from .storage import get_file
-
 
 logger = logging.getLogger("onsigntv.fields")
 
@@ -66,7 +65,7 @@ class ColorField(AdaptableMixin, StringField):
 
     def adapt_data(self):
         if len(self.data) == 9:
-            r, g, b, a = [int(self.data[i : i + 2], 16) for i in range(1, 9, 2)]
+            r, g, b, a = (int(self.data[i : i + 2], 16) for i in range(1, 9, 2))
             self.data = "rgba(%i,%i,%i,%.3f)" % (r, g, b, float(a) / 255)
 
 
@@ -498,12 +497,13 @@ class Font:
         return jinja2.Markup(
             """
             <style>
-              @font-face {
-                font-family: '%s';
-                src: url('%s') format('truetype');
-              }
-            </style>"""
-            % (self.family, self.url)
+              @font-face {{
+                font-family: '{}';
+                src: url('{}') format('truetype');
+              }}
+            </style>""".format(
+                self.family, self.url
+            )
         )
 
 
@@ -550,7 +550,7 @@ class GoogleSheet:
 
     def get_range_url(self, *ranges):
         ranges = [r.strip() for sublist in ranges for r in sublist.split(",")]
-        return "https://signagewidgets.net/sheet/%s/%s" % (
+        return "https://signagewidgets.net/sheet/{}/{}".format(
             self._sheet_id,
             ",".join(ranges),
         )
@@ -692,7 +692,7 @@ class StockExchange:
 
     @property
     def stock_url(self):
-        return "https://signagewidgets.net/stockexchange/%s" % (self._stock_name,)
+        return f"https://signagewidgets.net/stockexchange/{self._stock_name}"
 
     @property
     def stock_data(self):
@@ -719,7 +719,7 @@ class StockExchange:
 
     @property
     def high_freq_url(self):
-        return "https://signagewidgets.net/alphavantage/%s" % (self._stock_name,)
+        return f"https://signagewidgets.net/alphavantage/{self._stock_name}"
 
     @property
     def high_freq_data(self):

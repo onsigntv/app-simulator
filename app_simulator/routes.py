@@ -2,21 +2,20 @@ import asyncio
 import logging
 import urllib
 
+from aiohttp.web import FileResponse, HTTPNotFound, Response
 from aiohttp_sse import sse_response
-from aiohttp.web import Response, FileResponse, HTTPNotFound
 from jinja2 import Environment, PackageLoader, select_autoescape
 from multidict import MultiDict
 from wtforms import DateTimeField
 
 from .app_config import SDK_TAG, extract_app_config, render_app_html
-from .form import build_form, ALLOWED_FILE_TYPES
-from .samples import TWITTER_FEED, INSTAGRAM_FEED
+from .form import ALLOWED_FILE_TYPES, build_form
+from .samples import INSTAGRAM_FEED, TWITTER_FEED
 from .storage import get_file, save_file
 from .utils import (
     formdata_to_json,
     inject_script_into_html,
 )
-
 
 jinja_env = Environment(
     loader=PackageLoader("app_simulator", "templates"),
@@ -41,13 +40,13 @@ async def list_form_file(request):
         path = path / name
 
     if path.is_file() and path.name.endswith(".html"):
-        logger.debug(f"open a html file: {name}")
+        logger.debug("open a html file: %s", name)
 
         try:
             config = extract_app_config(path.read_text("utf-8"))
 
             tracked_files.clear()
-            logger.debug(f"add {name} to tracked files list")
+            logger.debug("add %s to tracked files list", name)
             track_file(path)
 
             form = build_form(config)
@@ -55,7 +54,7 @@ async def list_form_file(request):
 
         except Exception as exp:
             exceptions = [exp]
-            logger.info(f"handling exception: {exp}")
+            logger.info("handling exception: %s", exp)
 
             return Response(
                 text=jinja_env.get_template("widget_exceptions.html").render(
@@ -70,7 +69,7 @@ async def list_form_file(request):
                     "form": form,
                     "warnings": config["warnings"],
                     "title": config["title"],
-                    "file_name": "/.preview/{}".format(urllib.parse.quote(name)),
+                    "file_name": f"/.preview/{urllib.parse.quote(name)}",
                 },
             ),
             content_type="text/html",
@@ -79,7 +78,7 @@ async def list_form_file(request):
         if ".preview/" in request.headers.get("referer", ""):
             return HTTPNotFound()
         elif path.suffix in ALLOWED_FILE_TYPES:
-            logger.debug(f"serving file: {name}")
+            logger.debug("serving file: %s", name)
             return FileResponse(path)
         else:
             return HTTPNotFound()
@@ -140,7 +139,7 @@ async def preview_app(request):
     path = request.app["base_path"] / name
 
     if path not in tracked_files:
-        logger.debug(f"add {name} to tracked files list before preview")
+        logger.debug("add %s to tracked files list before preview", name)
         track_file(path)
 
     formdata = MultiDict()
@@ -154,19 +153,19 @@ async def preview_app(request):
 
         field_name = part.name
         if part.filename:
-            logger.debug(f"field name {field_name} is a file")
+            logger.debug("field name %s is a file", field_name)
             file_byte = await part.read(decode=True)
             formdata.add(field_name, save_file(part.filename, file_byte))
         else:
             metadata = await part.text()
-            logger.debug(f"field name {field_name} has value {metadata}")
+            logger.debug("field name %s has value %s", field_name, metadata)
             formdata.add(field_name, metadata)
 
     try:
         config = extract_app_config(path.read_text("utf-8"))
     except Exception as exp:
         exceptions = [exp]
-        logger.info(f"handling exception: {exp}")
+        logger.info("handling exception: %s", exp)
 
         return Response(
             text=jinja_env.get_template("widget_exceptions.html").render(
@@ -227,14 +226,14 @@ async def preview_app(request):
 
         for field in form:
             for error in field.errors:
-                logger.info(f"{field.name} : {error}")
+                logger.info("Field %s: %s", field.name, error)
 
         return Response(
             text=jinja_env.get_template("widget_form.html").render(
                 {
                     "form": form,
                     "title": config["title"],
-                    "file_name": "/.preview/{}".format(urllib.parse.quote(name)),
+                    "file_name": f"/.preview/{urllib.parse.quote(name)}",
                     "warnings": config["warnings"],
                 },
             ),
@@ -253,17 +252,17 @@ async def change_notification_sse(request):
             for path, last_modification in tracked_files.items():
                 if path.is_file():
                     actual_modification = path.stat().st_ctime
-                    logger.debug(f"Checking m_time {path}")
+                    logger.debug("Checking m_time %s", path)
 
                     if last_modification == 0:
                         tracked_files[path] = actual_modification
                     else:
                         if actual_modification > last_modification:
-                            logger.info(f"Reloading due to change on {path}")
+                            logger.info("Reloading due to change on %s", path)
                             await resp.send("refresh")
                             tracked_files[path] = actual_modification
                 else:
-                    logger.info(f"File not found: {path}")
+                    logger.info("File not found: %s", path)
             await asyncio.sleep(1, loop=loop)
 
     return resp
@@ -324,7 +323,7 @@ async def serve_preview_asset(request):
         and path.suffix in ALLOWED_FILE_TYPES
         and request.query.get("tracked")
     ):
-        logger.debug(f"serving file: {name}")
+        logger.debug("serving file: %s", name)
         return FileResponse(path)
 
     return HTTPNotFound()
@@ -335,15 +334,17 @@ async def serve_file_from_uploads(request):
 
 
 async def serve_twitter_data(request):
-    from aiohttp import web
     import json
+
+    from aiohttp import web
 
     return web.json_response(json.loads(TWITTER_FEED))
 
 
 async def serve_instagram_data(request):
-    from aiohttp import web
     import json
+
+    from aiohttp import web
 
     return web.json_response(json.loads(INSTAGRAM_FEED))
 

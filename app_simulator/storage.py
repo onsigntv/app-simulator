@@ -1,7 +1,6 @@
 import hashlib
 from pathlib import Path
 
-
 storage_path = Path.home() / ".app-simulator"
 
 

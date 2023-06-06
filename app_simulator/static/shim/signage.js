@@ -184,7 +184,7 @@
           return Object.keys(window.__appAttrs).some((appAttr) => window.__appAttrs[appAttr]["playerName"] === name);
         }
       }
-      
+
       try {
         if (name === "__tags__") {
           playbackInfo.player.tags = value;

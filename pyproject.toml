@@ -5,3 +5,10 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[tool.black]
+target-version = ["py37"]
+
+[tool.ruff]
+select = ["E", "F", "I", "UP", "C4", "COM818", "COM819", "G", "PIE", "INT", "T20"]
+ignore = ["E501", "E741"]
+target-version = "py37"

@@ -6,13 +6,11 @@ import time
 from datetime import datetime
 from html.parser import HTMLParser
 from io import BytesIO, StringIO
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urljoin, urlparse
 
 import feedparser
 
-from . import samples
-from . import utils
-
+from . import samples, utils
 
 logger = logging.getLogger("onsigntv.rss")
 
@@ -196,7 +194,7 @@ def get_opengraph_url(base_url, entry):
                     entry["entry_url"], match.groups()[0] or match.groups()[1]
                 )
     except Exception as e:
-        logger.info(f"error: {url} - {e} ")
+        logger.info("error: %s - %s", url, e)
 
 
 def get_metadata(url):
