@@ -17,6 +17,7 @@ DESCRIPTION = (
 LONG_DESCRIPTION = (HERE / "README.md").read_text()
 
 REQUIREMENTS = (HERE / "requirements.txt").read_text().splitlines()
+REQUIREMENTS_DEV = (HERE / "requirements-dev.txt").read_text().splitlines()
 
 
 if len(sys.argv) > 1 and sys.argv[1] == "develop":
@@ -73,7 +74,7 @@ setuptools.setup(
             "static/shim/signage.js",
         ]
     },
-    data_files=[(".", ["requirements.txt"])],
+    data_files=[(".", ["requirements.txt", "requirements-dev.txt"])],
     install_requires=REQUIREMENTS,
-    extras_require={"dev": ["black==22.1.0"]},
+    extras_require={"dev": REQUIREMENTS_DEV},
 )
