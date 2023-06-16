@@ -1,7 +1,9 @@
 import asyncio
 import json
 import logging
+import random
 import urllib
+from datetime import datetime, timedelta
 
 from aiohttp.web import FileResponse, HTTPNotFound, Response
 from aiohttp_sse import sse_response
@@ -11,7 +13,7 @@ from wtforms import DateTimeField
 
 from .app_config import SDK_TAG, extract_app_config, render_app_html
 from .form import ALLOWED_FILE_TYPES, build_form
-from .samples import INSTAGRAM_FEED, TWITTER_FEED
+from .samples import AIRPORT_DATA, INSTAGRAM_FEED, TWITTER_FEED
 from .storage import get_file, save_file
 from .utils import (
     formdata_to_json,
@@ -379,6 +381,39 @@ async def serve_instagram_data(request):
     from aiohttp import web
 
     return web.json_response(json.loads(INSTAGRAM_FEED))
+
+
+async def serve_airport_data(request):
+    import json
+
+    from aiohttp import web
+
+    def populate_flight_times(flights):
+        dt = datetime.now()
+        for flight in flights:
+            random_min = random.randint(10, 40)
+            dt += timedelta(minutes=random_min)
+
+            flight["time"] = flight["estimated-time"] = dt.strftime(
+                "%Y-%m-%dT%H:%M:%S+00:00"
+            )
+
+    airport = request.match_info.get("airport_name", "")
+    flight_kinds = request.match_info.get("flight_kinds", "")
+
+    data = json.loads(AIRPORT_DATA)
+    data["name"] = airport
+    data["localtime"] = data["updated_at"] = datetime.now().strftime(
+        "%Y-%m-%dT%H:%M:%S+00:00"
+    )
+
+    for kind in ("departures", "arrivals"):
+        if kind in flight_kinds:
+            populate_flight_times(data[kind])
+        else:
+            data.pop(kind, None)
+
+    return web.json_response(data)
 
 
 async def serve_font(request):

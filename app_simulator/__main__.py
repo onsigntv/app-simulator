@@ -84,6 +84,9 @@ def main():
     app.router.add_get("/.uploads/{file_name}", routes.serve_file_from_uploads)
     app.router.add_get("/.twitter/mock_data", routes.serve_twitter_data)
     app.router.add_get("/.instagram/mock_data", routes.serve_instagram_data)
+    app.router.add_get(
+        "/.aviation/mock_data/{airport_name}/{flight_kinds}", routes.serve_airport_data
+    )
     app.router.add_get(r"/.font/{blob_path:.+}", routes.serve_font)
     app.router.add_get(r"/.preview/{file_name:.+}", routes.serve_preview_asset)
     app.router.add_post(r"/.preview/{file_name:.+}", routes.preview_app)

@@ -26,23 +26,44 @@ class AdaptableMixin:
         self.data = self.adapt_class(self.data)
 
 
-class AirportField(SelectField):
+AIRPORT_CHOICES = {
+    "CAN": "Guangzhou Baiyun International Airport",
+    "ATL": "Hartsfield–Jackson Atlanta International Airport",
+    "DEN": "Denver International Airport",
+    "HND": "Tokyo Haneda Airport",
+    "DEL": "Indira Gandhi International Airport",
+    "DXB": "Dubai International Airport",
+    "LHR": "Heathrow Airport",
+    "MEX": "Mexico City International Airport",
+    "GRU": "Guarulhos International Airport",
+}
+
+
+class Airport:
+    def __init__(self, code, name):
+        self._code = code
+        self._name = name
+
+    def __str__(self):
+        return self._code
+
+    def flight_url(self, kinds=["departures", "arrivals"]):
+        flight_type = ",".join(kinds)
+
+        return f"/.aviation/mock_data/{self._name}/{flight_type}"
+
+
+class AirportField(AdaptableMixin, SelectField):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.choices = [
-            ("CAN", "Guangzhou Baiyun International Airport"),
-            ("ATL", "Hartsfield–Jackson Atlanta International Airport"),
-            ("DEN", "Denver International Airport"),
-            ("HND", "Tokyo Haneda Airport"),
-            ("DEL", "Indira Gandhi International Airport"),
-            ("DXB", "Dubai International Airport"),
-            ("LHR", "Heathrow Airport"),
-            ("MEX", "Mexico City International Airport"),
-            ("GRU", "Guarulhos International Airport"),
-        ]
+        self.choices = list(AIRPORT_CHOICES.items())
+
         if not self.flags.required:
             self.choices.insert(0, ("", "-----------"))
+
+    def adapt_data(self):
+        self.data = Airport(self.data, AIRPORT_CHOICES.get(self.data))
 
 
 class ColorInput(Input):

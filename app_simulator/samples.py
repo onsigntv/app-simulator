@@ -647,3 +647,265 @@ PLAYBACK_INFO = """{
     }
   }
 }"""
+
+AIRPORT_DATA = """
+{
+    "name": "",
+    "localtime": "",
+    "updated_at": "",
+    "arrivals": [
+        {
+            "location": "Hercilio Luz",
+            "time": "2023-06-14T20:45:00+00:00",
+            "estimated_time": "2023-06-14T20:45:00+00:00",
+            "status": "Scheduled",
+            "terminal": "2",
+            "gate": "",
+            "flight": {
+                "carrier": "DL",
+                "code": "DL6005"
+            },
+            "code_shares": [
+                {
+                    "carrier": "LA",
+                    "code": "LA3305"
+                }
+            ]
+        },
+        {
+            "location": "Santa Genoveva",
+            "time": "2023-06-14T20:55:00+00:00",
+            "estimated_time": "2023-06-14T20:55:00+00:00",
+            "status": "Scheduled",
+            "terminal": "2",
+            "gate": "",
+            "flight": {
+                "carrier": "CM",
+                "code": "CM3594"
+            },
+            "code_shares": [
+                {
+                    "carrier": "G3",
+                    "code": "G31423"
+                }
+            ]
+        },
+        {
+            "location": "Santa Genoveva",
+            "time": "2023-06-14T20:55:00+00:00",
+            "estimated_time": "2023-06-14T20:55:00+00:00",
+            "status": "Scheduled",
+            "terminal": "2",
+            "gate": "",
+            "flight": {
+                "carrier": "EK",
+                "code": "EK3622"
+            },
+            "code_shares": [
+                {
+                    "carrier": "G3",
+                    "code": "G31423"
+                }
+            ]
+        },
+        {
+            "location": "Galeao Antonio Carlos Jobim",
+            "time": "2023-06-14T20:55:00+00:00",
+            "estimated_time": "2023-06-14T20:55:00+00:00",
+            "status": "Scheduled",
+            "terminal": "2",
+            "gate": "",
+            "flight": {
+                "carrier": "LA",
+                "code": "LA4705"
+            },
+            "code_shares": []
+        },
+        {
+            "location": "Galeao Antonio Carlos Jobim",
+            "time": "2023-06-14T20:55:00+00:00",
+            "estimated_time": "2023-06-14T20:55:00+00:00",
+            "status": "Scheduled",
+            "terminal": "2",
+            "gate": "",
+            "flight": {
+                "carrier": "DL",
+                "code": "DL6108"
+            },
+            "code_shares": [
+                {
+                    "carrier": "LA",
+                    "code": "LA4705"
+                }
+            ]
+        },
+        {
+            "location": "Galeao Antonio Carlos Jobim",
+            "time": "2023-06-14T20:55:00+00:00",
+            "estimated_time": "2023-06-14T20:55:00+00:00",
+            "status": "Scheduled",
+            "terminal": "2",
+            "gate": "",
+            "flight": {
+                "carrier": "JL",
+                "code": "JL5517"
+            },
+            "code_shares": [
+                {
+                    "carrier": "LA",
+                    "code": "LA4705"
+                }
+            ]
+        },
+        {
+            "location": "Santa Genoveva",
+            "time": "2023-06-14T20:55:00+00:00",
+            "estimated_time": "2023-06-14T20:55:00+00:00",
+            "status": "Scheduled",
+            "terminal": "2",
+            "gate": "",
+            "flight": {
+                "carrier": "G3",
+                "code": "G31423"
+            },
+            "code_shares": []
+        },
+        {
+            "location": "Doha International",
+            "time": "2023-06-15T11:10:00+00:00",
+            "estimated_time": "2023-06-15T11:10:00+00:00",
+            "status": "Scheduled",
+            "terminal": "3",
+            "gate": "",
+            "flight": {
+                "carrier": "QR",
+                "code": "QR779"
+            },
+            "code_shares": []
+        }
+    ],
+    "departures": [
+        {
+            "location": "Barajas",
+            "time": "2023-06-14T13:50:00+00:00",
+            "estimated_time": "2023-06-14T13:50:00+00:00",
+            "status": "En Route",
+            "terminal": "2",
+            "gate": "267",
+            "flight": {
+                "carrier": "EY",
+                "code": "EY4399"
+            },
+            "code_shares": [
+                {
+                    "carrier": "UX",
+                    "code": "UX58"
+                }
+            ]
+        },
+        {
+            "location": "Leonardo Da Vinci (Fiumicino)",
+            "time": "2023-06-14T14:25:00+00:00",
+            "estimated_time": "2023-06-14T14:25:00+00:00",
+            "status": "En Route",
+            "terminal": "3",
+            "gate": "",
+            "flight": {
+                "carrier": "EY",
+                "code": "EY2979"
+            },
+            "code_shares": [
+                {
+                    "carrier": "AZ",
+                    "code": "AZ675"
+                }
+            ]
+        },
+        {
+            "location": "Barajas",
+            "time": "2023-06-14T14:30:00+00:00",
+            "estimated_time": "2023-06-14T14:30:00+00:00",
+            "status": "En Route",
+            "terminal": "3",
+            "gate": "310",
+            "flight": {
+                "carrier": "JL",
+                "code": "JL6993"
+            },
+            "code_shares": [
+                {
+                    "carrier": "IB",
+                    "code": "IB6824"
+                }
+            ]
+        },
+        {
+            "location": "Barajas",
+            "time": "2023-06-14T14:30:00+00:00",
+            "estimated_time": "2023-06-14T14:30:00+00:00",
+            "status": "En Route",
+            "terminal": "3",
+            "gate": "310",
+            "flight": {
+                "carrier": "CX",
+                "code": "CX1840"
+            },
+            "code_shares": [
+                {
+                    "carrier": "IB",
+                    "code": "IB6824"
+                }
+            ]
+        },
+        {
+            "location": "Barajas",
+            "time": "2023-06-14T14:30:00+00:00",
+            "estimated_time": "2023-06-14T14:30:00+00:00",
+            "status": "En Route",
+            "terminal": "3",
+            "gate": "310",
+            "flight": {
+                "carrier": "QR",
+                "code": "QR5087"
+            },
+            "code_shares": [
+                {
+                    "carrier": "IB",
+                    "code": "IB6824"
+                }
+            ]
+        },
+        {
+            "location": "Barajas",
+            "time": "2023-06-14T14:30:00+00:00",
+            "estimated_time": "2023-06-14T14:30:00+00:00",
+            "status": "En Route",
+            "terminal": "3",
+            "gate": "310",
+            "flight": {
+                "carrier": "LA",
+                "code": "LA7107"
+            },
+            "code_shares": [
+                {
+                    "carrier": "IB",
+                    "code": "IB6824"
+                }
+            ]
+        },
+        {
+            "location": "Newark Liberty International",
+            "time": "2023-06-14T21:00:00+00:00",
+            "estimated_time": "2023-06-14T21:00:00+00:00",
+            "status": "Scheduled",
+            "terminal": "3",
+            "gate": "",
+            "flight": {
+                "carrier": "UA",
+                "code": "UA148"
+            },
+            "code_shares": []
+        }
+    ]
+}
+"""
