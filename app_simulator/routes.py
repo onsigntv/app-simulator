@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import mimetypes
 import random
 import urllib
 from datetime import datetime, timedelta
@@ -17,6 +18,7 @@ from .samples import AIRPORT_DATA, INSTAGRAM_FEED, TWITTER_FEED
 from .storage import get_file, save_file
 from .utils import (
     formdata_to_json,
+    get_resource_string,
     inject_script_into_html,
 )
 
@@ -38,13 +40,25 @@ def get_app_kind(config):
         return "Audio App"
 
 
+def handle_widget_exception(exp, formdata=None):
+    logger.info("handling rendering exception: %s", exp)
+
+    context = {"exceptions": [exp]}
+    if formdata:
+        context["formdata"] = formdata_to_json(formdata)
+
+    return Response(
+        text=jinja_env.get_template("widget_exceptions.html").render(context),
+        content_type="text/html",
+    )
+
+
 def track_file(x):
     tracked_files[x] = 0
 
 
 async def list_form_file(request):
     name = request.match_info.get("file_name", "")
-
     path = request.app["base_path"]
     if name:
         path = path / name
@@ -63,15 +77,7 @@ async def list_form_file(request):
             form.process()
 
         except Exception as exp:
-            exceptions = [exp]
-            logger.info("handling exception: %s", exp)
-
-            return Response(
-                text=jinja_env.get_template("widget_exceptions.html").render(
-                    {"exceptions": exceptions}
-                ),
-                content_type="text/html",
-            )
+            return handle_widget_exception(exp)
 
         return Response(
             text=jinja_env.get_template("widget_form.html").render(
@@ -177,18 +183,7 @@ async def preview_app(request):
     try:
         config = extract_app_config(path.read_text("utf-8"))
     except Exception as exp:
-        exceptions = [exp]
-        logger.info("handling exception: %s", exp)
-
-        return Response(
-            text=jinja_env.get_template("widget_exceptions.html").render(
-                {
-                    "exceptions": exceptions,
-                    "formdata": formdata_to_json(formdata),
-                },
-            ),
-            content_type="text/html",
-        )
+        return handle_widget_exception(exp, formdata)
 
     form = build_form(config)
     form.process(formdata=formdata)
@@ -203,14 +198,18 @@ async def preview_app(request):
                 field.adapt()
 
             if getattr(field, "is_attribute", None):
-                default = field.data
-                if field.attr_type in {"numberarray", "stringarray"}:
-                    try:
-                        default = json.loads(default)
-                        if not isinstance(default, list):
-                            raise ValueError()
-                    except ValueError:
-                        default = None
+                default = None
+                if field.data not in (None, ""):
+                    default = field.data
+                    if field.attr_type in {"numberarray", "stringarray"}:
+                        try:
+                            default = json.loads(default)
+                            if not isinstance(default, list):
+                                raise ValueError()
+                        except ValueError:
+                            return handle_widget_exception(
+                                f'Invalid value "{default}" for attribute "{field.player_name}" of type "{field.attr_type}". Value must be a JSON array.'
+                            )
 
                 attrs_info[field.name] = {
                     "type": field.attr_type,
@@ -231,25 +230,25 @@ async def preview_app(request):
 
                 js_app_config[field.name] = field_data
 
+        app_global_objects = {
+            "__appFormData": formdata_to_json(formdata),
+        }
+
+        if attrs_info:
+            app_global_objects["__appAttrs"] = json.dumps(attrs_info)
+
         if js_app_config:
             js_app_config["__lang__"] = "en"
+            app_global_objects["appConfig"] = json.dumps(js_app_config)
 
-        html, excep = render_app_html(data, path, track_file)
+        if data["_serial_port_config"]:
+            app_global_objects["__serialPorts"] = data["_serial_port_config"]
+
+        html, exp = render_app_html(data, path, track_file)
         if html is None:
-            logger.debug("handling rendering exceptions")
-            return Response(
-                text=jinja_env.get_template("widget_exceptions.html").render(
-                    {
-                        "exceptions": [str(excep)],
-                        "formdata": formdata_to_json(formdata),
-                    },
-                ),
-                content_type="text/html",
-            )
+            return handle_widget_exception(exp, formdata)
 
-        html = inject_script_into_html(
-            html, SDK_TAG, formdata, attrs_info, js_app_config
-        )
+        html = inject_script_into_html(html, SDK_TAG, app_global_objects)
 
         return Response(text=html, content_type="text/html")
     else:
@@ -435,3 +434,16 @@ async def serve_font(request):
         filename = save_file(font_path, data)
 
         return FileResponse(get_file(filename))
+
+
+async def serve_static_asset(request):
+    file_path = request.match_info.get("path", "")
+
+    try:
+        file_content = get_resource_string("/static/" + file_path)
+
+        return Response(
+            content_type=mimetypes.guess_type(file_path)[0], body=file_content
+        )
+    except FileNotFoundError:
+        return HTTPNotFound()

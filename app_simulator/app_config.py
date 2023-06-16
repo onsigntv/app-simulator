@@ -294,9 +294,8 @@ def render_app_html(context, path, tracker, **kwargs):
 
         with env.local_ctx(tracker=tracker, context=context):
             html = template.render(context)
-    except Exception as errors:
-        logger.debug("handling render exception")
-        exceptions = errors
+    except Exception as exp:
+        exceptions = exp
 
     return html, exceptions
 
@@ -1035,6 +1034,30 @@ def extract_app_config(template_text):
         "label": "Show Notification on App Attribute Change",
         "value": False,
         "help_text": "Display a toast on the bottom of the screen whenever an app attributes value has changed",
+        "required": None,
+        "optgroup": None,
+    }
+
+    app_fields["_serial_port_config"] = {
+        "type": "text",
+        "label": "Serial Port Configuration",
+        "value": "",
+        "help_text": "",
+        "required": None,
+        "optgroup": None,
+    }
+
+    app_fields["_toast_serial_port_data"] = {
+        "type": "bool",
+        "label": "Show Notification When Serial Port Data is Read",
+        "value": False,
+        "help_text": Markup(
+            """
+            Display a toast on the bottom of the screen whenever the
+            <a href="https://github.com/onsigntv/apps/blob/master/docs/JSBRIDGE.md#signage-serialportdata-event">
+            <code>serialportdata</code> event</a> is fired
+            """
+        ),
         "required": None,
         "optgroup": None,
     }

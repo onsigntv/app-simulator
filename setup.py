@@ -72,6 +72,7 @@ setuptools.setup(
             "templates/widget_form.html",
             "static/shim/Intl.min.js",
             "static/shim/signage.js",
+            "static/js/widget_form.js",
         ]
     },
     data_files=[(".", ["requirements.txt", "requirements-dev.txt"])],

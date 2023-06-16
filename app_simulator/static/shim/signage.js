@@ -44,61 +44,64 @@
     }
   }
 
-  if (window.__appFormData["_toast_attr_change"]) {
-    var toastTimer = null;
-    var toastArea = null;
-    var toastMsgs = [];
-    var toast = null;
+  var toastTimer = null;
+  var toastArea = null;
+  var toastMsgs = [];
+  var toast = null;
+  function addNotification(msg) {
+    if (toastTimer) clearTimeout(toastTimer);
 
-    document.addEventListener("appattrchanged", function (e) {
-      if (toastTimer) clearTimeout(toastTimer);
-      toastTimer = setTimeout(function () {
-        function fadeToast(op) {
-          if (toastTimer) {
-            /* Check if a new attr has been set while the toast is fading
-            away, if so, the fading must stop. */
-            toastArea.style.opacity = "0.7";
-          } else if (op >= 0) {
-            toastArea.style.opacity = parseFloat(op / 100);
-            setTimeout(function () {
-              fadeToast(op - 1);
-            }, 10);
-          } else {
-            toastArea.remove();
-            toastArea = null;
-          }
+    toastTimer = setTimeout(function () {
+      function fadeToast(op) {
+        if (toastTimer) {
+          /* Check if a new attr has been set while the toast is fading
+          away, if so, the fading must stop. */
+          toastArea.style.opacity = "0.7";
+        } else if (op >= 0) {
+          toastArea.style.opacity = parseFloat(op / 100);
+          setTimeout(function () {
+            fadeToast(op - 1);
+          }, 10);
+        } else {
+          toastArea.remove();
+          toastArea = null;
         }
-
-        toastTimer = null;
-        fadeToast(70);
-      }, 5000);
-
-      var textSpan = document.createElement("span");
-      textSpan.style = "display: flex;flex-direction: column;max-width: 100%;margin: 3px auto";
-      var txt = `Attribute "${e.detail.name}" = ${JSON.stringify(e.detail.value)}`;
-      textSpan.innerText = txt;
-      console.log(txt);
-
-      toastMsgs.push(textSpan);
-      if (toastMsgs.length > 10) {
-        toastMsgs[0].remove();
-        toastMsgs.splice(0, 1);
       }
 
-      if (!toastArea) {
-        toastArea = document.createElement("div");
-        toastArea.style =
-          "position: fixed;left: 0;right: 0;display: flex;justify-content: center;align-items: center;z-index: 1000000;opacity:0.7;";
+      toastTimer = null;
+      fadeToast(70);
+    }, 5000);
 
-        toast = document.createElement("div");
-        toast.style =
-          "position: fixed;bottom: 10%;background-color: black;color: white;border-radius: 30px;padding: 8px 20px;text-align: center;font-family: monospace; box-shadow: 0 5px 9px 0 rgba(0, 0, 0, 0.2), 0 7px 21px 0 rgba(0, 0, 0, 0.19);";
+    var textSpan = document.createElement("span");
+    textSpan.style = "display: flex;flex-direction: column;max-width: 100%;margin: 3px auto";
+    textSpan.innerText = msg;
+    console.log(msg);
 
-        toastArea.appendChild(toast);
-        document.body.appendChild(toastArea);
-      }
+    toastMsgs.push(textSpan);
+    if (toastMsgs.length > 10) {
+      toastMsgs[0].remove();
+      toastMsgs.splice(0, 1);
+    }
 
-      toast.appendChild(textSpan);
+    if (!toastArea) {
+      toastArea = document.createElement("div");
+      toastArea.style =
+        "position: fixed;left: 0;right: 0;display: flex;justify-content: center;align-items: center;z-index: 1000000;opacity:0.7;";
+
+      toast = document.createElement("div");
+      toast.style =
+        "position: fixed;bottom: 10%;background-color: black;color: white;border-radius: 30px;padding: 8px 20px;text-align: center;font-family: monospace; box-shadow: 0 5px 9px 0 rgba(0, 0, 0, 0.2), 0 7px 21px 0 rgba(0, 0, 0, 0.19);";
+
+      toastArea.appendChild(toast);
+      document.body.appendChild(toastArea);
+    }
+
+    toast.appendChild(textSpan);
+  }
+
+  if (window.__appFormData["_toast_attr_change"]) {
+    document.addEventListener("appattrchanged", function (e) {
+      addNotification(`Attribute "${e.detail.name}" = ${JSON.stringify(e.detail.value)}`);
     });
   }
 
@@ -153,12 +156,29 @@
     /* noop */
   }
 
+  var serialPortCallbacks = {};
+  function serialPortDispatch(alias, data) {
+    var data = { detail: { name: alias, value: data } };
+    if (serialPortCallbacks[alias]) {
+      serialPortCallbacks[alias].forEach(function (func) {
+        func(data);
+      });
+    }
+  }
+
   var internalTarget = document.createElement("div");
   var brightness = 100;
   var volume = 100;
   var signage = {
     addEventListener: function () {
-      internalTarget.addEventListener.apply(internalTarget, arguments);
+      if (arguments[0] === "serialportdata") {
+        var alias = arguments[1];
+        var func = arguments[2];
+        if (!serialPortCallbacks[alias]) serialPortCallbacks[alias] = [];
+        serialPortCallbacks[alias].push(func);
+      } else {
+        internalTarget.addEventListener.apply(internalTarget, arguments);
+      }
     },
     getBrightness: function () {
       return brightness;
@@ -242,6 +262,32 @@
         extra: extra,
       });
     },
+    serialPortWrite: function (alias, data) {
+      return new Promise((resolve, reject) => {
+        if (window.__serialPorts[alias]) {
+          var mode = window.__serialPorts[alias];
+          try {
+            if (mode === "character") {
+              for (var i = 0; i < data.length; i++) {
+                serialPortDispatch(alias, data[i]);
+              }
+            } else if (mode === "line") {
+              data.split(/\r?\n/).forEach(function (line) {
+                serialPortDispatch(alias, line);
+              });
+            } else if (mode === "binary") {
+              var encoder = new TextEncoder();
+              serialPortDispatch(alias, encoder.encode(data).buffer);
+            }
+            resolve();
+          } catch (ex) {
+            reject(`Error writing data to serial port: "${ex}"`);
+          }
+        } else {
+          reject(`Serial port not connected: "${alias}"`);
+        }
+      });
+    },
     setBrightness: function (percent) {
       var value = parseInt(percent, 10);
       if (!isNaN(value)) {
@@ -252,18 +298,10 @@
       }, 100);
     },
     setPlayerAttribute: function (name, value) {
-      function isValidPlayerAttribute(name) {
-        if (name in playbackInfo.player.attrs) {
-          return true;
-        } else if (window.__appAttrs) {
-          return Object.keys(window.__appAttrs).some((appAttr) => window.__appAttrs[appAttr]["playerName"] === name);
-        }
-      }
-
       try {
         if (name === "__tags__") {
           playbackInfo.player.tags = value;
-        } else if (isValidPlayerAttribute(name) && value !== playbackInfo.player.attrs[name]) {
+        } else if (name in playbackInfo.player.attrs && value !== playbackInfo.player.attrs[name]) {
           playbackInfo.player.attrs[name] = value;
           dispatch("attrchanged", { detail: { name: name, value: value } }, internalTarget);
         }
@@ -299,7 +337,7 @@
     },
   };
 
-  if (window.__appAttrs !== null) {
+  if (window.__appAttrs) {
     let assertAttrExists = function (name) {
       if (!(name in window.__appAttrs)) {
         throw new Error("App attribute does not exist: " + name);
@@ -382,6 +420,15 @@
       if (appAttr && isAppAttributeConnected(appAttr)) {
         dispatch("appattrchanged", { detail: { name: appAttr, value: value } });
       }
+    });
+  }
+
+  if (window.__appFormData["_toast_serial_port_data"] && window.__serialPorts) {
+    var serialPorts = Object.keys(window.__serialPorts);
+    serialPorts.forEach(function (alias) {
+      signage.addEventListener("serialportdata", alias, function (e) {
+        addNotification(`Data read from serial port "${e.detail.name}": "${e.detail.value}"`);
+      });
     });
   }
 

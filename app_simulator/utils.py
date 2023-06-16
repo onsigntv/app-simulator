@@ -129,22 +129,18 @@ def formdata_to_json(data):
     return json.dumps(_data)
 
 
-def inject_script_into_html(html, sdk_tag, form_data, attrs_info, js_app_config):
-    app_config = ""
-    if js_app_config:
-        app_config = f"window.appConfig = {json.dumps(js_app_config)};"
+def inject_script_into_html(html, sdk_tag, global_objects):
+    global_objects_script = ""
+    for key, value in global_objects.items():
+        global_objects_script += f"\nwindow.{key} = {value};"
 
     script = """
 <script type="text/javascript">
-  window.__appFormData = {form_data};
-  window.__appAttrs = {attrs_info};
-  {app_config}
+  {global_objects}
   {script}
 </script>
     """.format(
-        form_data=formdata_to_json(form_data),
-        attrs_info=json.dumps(attrs_info),
-        app_config=app_config,
+        global_objects=global_objects_script,
         script=re.sub(
             r"\s+", " ", get_resource_string("static/shim/signage.js").replace("\n", "")
         ),

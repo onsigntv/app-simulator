@@ -46,7 +46,7 @@
           <p class="form-text text-muted">The user of this app will be able to configure the following options.</p>
         {% endif %}
         {% if field.widget.input_type == "checkbox" -%}
-        <div class="form-check" style="margin-bottom: 1rem;">
+        <div class="form-check {% if field.label.field_id == '_toast_serial_port_data' %}serial-toast d-none{% endif %}" style="margin-bottom: 1rem;">
           {{ field() }}
           <label class="form-check-label" for="{{ field.label.field_id }}">{{ field.label.text }}</label>
         {% else -%}
@@ -58,10 +58,28 @@
             {{ field.label.text }}
             {% if field.flags.required %}<small class="align-top"><strong>[required]</strong></small>{% endif %}
           </label>
-          {% if field.label.field_id == "_playback_info" %}
-            &nbsp;&nbsp;&nbsp;<button type="button" class="btn btn-light btn-sm" id="pbInfoBtn">edit</button>
+          {% if field.label.field_id == "_serial_port_config" %}
+            &nbsp;&nbsp;&nbsp;<button id="add-serial" type="button" class="btn btn-light btn-sm">Add Port</button>
+            <table id="serial-ports-table" style="margin-bottom: 10px">
+              <tr id="serial-port-form" hidden="hidden">
+                <td style="padding: 5px 0"><input class="form-control" type="text" placeholder="Port Alias"></td>
+                <td style="padding: 5px 0"><span class="form-check-label">&nbsp;Mode:&nbsp;</span></td>
+                <td style="padding: 5px 0">
+                  <select class="form-control" name="mode">
+                    <option value="character">Character</option>
+                    <option value="line">Line</option>
+                    <option value="binary">Binary</option>
+                  </select>
+                </td>
+              </tr>
+            </table>
+            <div hidden="hidden">{{ field() }}</div>
+          {% else %}
+            {% if field.label.field_id == "_playback_info" %}
+              &nbsp;&nbsp;&nbsp;<button type="button" class="btn btn-light btn-sm" id="pbInfoBtn">Edit</button>
+            {% endif %}
+            {{ field() }}
           {% endif %}
-          {{ field() }}
         {% endif -%}
           {% for error in field.errors -%}
             <div class="invalid-feedback">{{ error }}</div>
@@ -78,49 +96,5 @@
     </div>
   </div>
 </div>
-
-<script type="text/javascript">
-  document.addEventListener("DOMContentLoaded", function () {
-    var button = document.getElementById("pbInfoBtn");
-    function togglePlaybackInfo () {
-      var toggled = document.getElementById("_playback_info").toggleAttribute("hidden");
-      if (toggled) {
-        button.innerHTML = "edit";
-      } else {
-        button.innerHTML = "done";
-      }
-    }
-    button.addEventListener("click", togglePlaybackInfo, false);
-    togglePlaybackInfo();
-
-    function toggleAttrConnection(checkbox) {
-      var textArea = document.getElementById("_playback_info");
-      var pbInfo = JSON.parse(textArea.value);
-
-      if (checkbox.checked) {
-        pbInfo.player.attrs[checkbox.dataset.label] = null;
-      } else {
-        delete pbInfo.player.attrs[checkbox.dataset.label];
-      }
-
-      var defaultValueInput = document.getElementById(checkbox.dataset.attr);
-      if (defaultValueInput) {
-        defaultValueInput.hidden = !checkbox.checked;
-        if (!checkbox.checked) defaultValueInput.value = null;
-      }
-
-      textArea.value = JSON.stringify(pbInfo, null, 2);
-    }
-
-    Array.from(document.getElementsByClassName("connect-attr")).forEach(function(checkbox) {
-      checkbox.addEventListener("click", function() {
-        toggleAttrConnection(this);
-      });
-
-      toggleAttrConnection(checkbox);
-    });
-  }, false);
-
-</script>
-
+<script type="text/javascript" src="/.static/js/widget_form.js"></script>
 {% endblock %}

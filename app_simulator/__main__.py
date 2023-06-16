@@ -88,6 +88,7 @@ def main():
         "/.aviation/mock_data/{airport_name}/{flight_kinds}", routes.serve_airport_data
     )
     app.router.add_get(r"/.font/{blob_path:.+}", routes.serve_font)
+    app.router.add_get(r"/.static/{path:.+}", routes.serve_static_asset)
     app.router.add_get(r"/.preview/{file_name:.+}", routes.serve_preview_asset)
     app.router.add_post(r"/.preview/{file_name:.+}", routes.preview_app)
     app.router.add_get(r"/{file_name:.*}", routes.list_form_file)

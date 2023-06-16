@@ -20,3 +20,12 @@ repos:
     rev: 23.3.0
     hooks:
     -   id: black
+
+-   repo: local
+    hooks:
+    -   id: prettier
+        name: prettier
+        entry: prettier --write --print-width 120 --list-different --ignore-unknown
+        language: node
+        types_or: [css, less, scss, javascript, vue, ts]
+        exclude: '^app_simulator/static/shim/Intl.min.js$'
