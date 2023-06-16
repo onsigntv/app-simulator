@@ -1,13 +1,11 @@
-import os
 import pathlib
-import sys
 
 import setuptools
 
 # The directory containing this file
 HERE = pathlib.Path(__file__).parent
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 DESCRIPTION = (
     "Assist the development of apps for OnSign TV platform by running them locally."
@@ -18,16 +16,6 @@ LONG_DESCRIPTION = (HERE / "README.md").read_text()
 
 REQUIREMENTS = (HERE / "requirements.txt").read_text().splitlines()
 REQUIREMENTS_DEV = (HERE / "requirements-dev.txt").read_text().splitlines()
-
-
-if len(sys.argv) > 1 and sys.argv[1] == "develop":
-    pre_commit_src = HERE / "hooks/pre-commit"
-    pre_commit_dst = HERE / ".git/hooks/pre-commit"
-    if pre_commit_dst.exists():
-        pre_commit_dst.unlink()
-
-    pre_commit_src_rel = os.path.relpath(pre_commit_src, pre_commit_dst.parent)
-    os.symlink(pre_commit_src_rel, pre_commit_dst, target_is_directory=True)
 
 
 setuptools.setup(
@@ -51,6 +39,7 @@ setuptools.setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Topic :: Software Development",
     ],
     url="https://github.com/onsigntv/app-simulator",
