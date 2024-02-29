@@ -598,9 +598,7 @@ class LenientJSONEncoder(json.JSONEncoder):
             hours = minutes // 60
             minutes = minutes % 60
             ms = f".{microseconds:06d}" if microseconds else ""
-            return "{}P{}DT{:02d}H{:02d}M{:02d}{}S".format(
-                sign, days, hours, minutes, seconds, ms
-            )
+            return f"{sign}P{days}DT{hours:02d}H{minutes:02d}M{seconds:02d}{ms}S"
         elif isinstance(o, (decimal.Decimal, uuid.UUID)):
             return str(o)
         else:
@@ -632,39 +630,13 @@ class LenientUndefined(Undefined):
     def __float__(self):
         return 0.0
 
-    __add__ = (
-        __radd__
-    ) = (
-        __mul__
-    ) = (
-        __rmul__
-    ) = (
-        __div__
-    ) = (
-        __rdiv__
-    ) = (
-        __truediv__
-    ) = (
+    __add__ = __radd__ = __mul__ = __rmul__ = __div__ = __rdiv__ = __truediv__ = (
         __rtruediv__
-    ) = (
-        __floordiv__
-    ) = (
-        __rfloordiv__
-    ) = (
-        __mod__
-    ) = (
-        __rmod__
-    ) = (
-        __pos__
-    ) = (
-        __neg__
-    ) = (
+    ) = __floordiv__ = __rfloordiv__ = __mod__ = __rmod__ = __pos__ = __neg__ = (
         __call__
-    ) = (
-        __getitem__
-    ) = (
-        __lt__
-    ) = __le__ = __gt__ = __ge__ = __complex__ = __pow__ = __rpow__ = _dont_give_up
+    ) = __getitem__ = __lt__ = __le__ = __gt__ = __ge__ = __complex__ = __pow__ = (
+        __rpow__
+    ) = _dont_give_up
 
 
 class ErrorExtension(Extension):
@@ -777,12 +749,10 @@ def extract_app_config(template_text):
         if js:
             if type not in JS_SUPPORTED_TYPES:
                 raise ValueError(
-                    """
+                    f"""
                     "{type}" type of configuration option "{name}" does not support the <code>js</code> parameter.<br>
                     Check the <a href="https://github.com/onsigntv/apps/blob/master/docs/JSBRIDGE.md#app-configuration-object-api">appConfig object documentation</a> to see which types are supported.
-                    """.format(
-                        type=type, name=name
-                    )
+                    """
                 )
 
             config.setdefault("js_app_config", []).append(name)

@@ -516,15 +516,13 @@ class Font:
     @property
     def style(self):
         return jinja2.Markup(
-            """
+            f"""
             <style>
               @font-face {{
-                font-family: '{}';
-                src: url('{}') format('truetype');
+                font-family: '{self.family}';
+                src: url('{self.url}') format('truetype');
               }}
-            </style>""".format(
-                self.family, self.url
-            )
+            </style>"""
         )
 
 
@@ -1094,7 +1092,7 @@ class DataSourceItem:
 
     def _generate_rows(self):
         rows = []
-        for i in range(0, self._entry_count):
+        for i in range(self._entry_count):
             row = {}
             for field in self._fields:
                 if field["type"] == "text":
