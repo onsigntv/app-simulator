@@ -17,6 +17,7 @@ from jinja2.ext import GETTEXT_FUNCTIONS, Extension, extract_from_ast
 from jinja2.sandbox import ImmutableSandboxedEnvironment
 
 from . import samples, utils
+from .fields import AVAILABLE_FONTS
 
 _local = threading.local()
 
@@ -786,6 +787,9 @@ def extract_app_config(template_text):
                 field["value"] = kwargs["choices"][0][0]
 
             field["choices"] = kwargs["choices"]
+        elif type == "font":
+            if value and value not in AVAILABLE_FONTS:
+                raise ValueError(f"Default font should be a valid system font: {name}")
 
         app_fields[name] = field
 
@@ -939,6 +943,11 @@ def extract_app_config(template_text):
                 else:
                     app_fields[name]["choices"].append([field["value"], field["label"]])
             else:
+                if field["type"] == "font":
+                    if attrs.get("value") and attrs["value"] not in AVAILABLE_FONTS:
+                        raise ValueError(
+                            f"Default font should be a valid system font: {name}"
+                        )
                 app_fields[name] = field
 
         for field in [

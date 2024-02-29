@@ -240,6 +240,7 @@ def build_form(config):
             fields[name] = FontField(
                 label=label,
                 description=help_text,
+                default=field["value"],
                 validators=validators,
                 render_kw={"class": "form-control"},
             )
