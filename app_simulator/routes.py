@@ -13,6 +13,7 @@ from multidict import MultiDict
 from wtforms import DateTimeField
 
 from .app_config import SDK_TAG, extract_app_config, render_app_html
+from .fields import ContentFile, ContentList
 from .form import ALLOWED_FILE_TYPES, build_form
 from .samples import AIRPORT_DATA, INSTAGRAM_FEED, TWITTER_FEED
 from .storage import get_file, save_file
@@ -230,10 +231,15 @@ async def preview_app(request):
                 None,
             ):
                 field_data = field.data
-                if isinstance(field, DateTimeField):
-                    field_data = field.data.isoformat()
 
-                js_app_config[field.name] = field_data
+                if isinstance(field, DateTimeField):
+                    js_app_config[field.name] = field.data.isoformat()
+                elif isinstance(field_data, ContentFile):
+                    js_app_config[field.name] = field_data._serialize()
+                elif isinstance(field_data, ContentList):
+                    js_app_config[field.name] = [c._serialize() for c in field_data]
+                else:
+                    js_app_config[field.name] = field_data
 
         app_global_objects = {
             "__appFormData": formdata_to_json(formdata),

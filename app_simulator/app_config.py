@@ -71,12 +71,17 @@ KNOWN_TYPES = {
 }
 
 JS_SUPPORTED_TYPES = {
+    "audio",
+    "audiolist",
     "bool",
     "choice",
     "color",
     "date",
     "datetime",
     "float",
+    "image",
+    "imagelist",
+    "media",
     "multichoice",
     "number",
     "paragraph",
@@ -84,6 +89,8 @@ JS_SUPPORTED_TYPES = {
     "text",
     "time",
     "url",
+    "video",
+    "xml",
 }
 
 USER_TYPES = {"audio", "audiolist", "image", "imagelist", "media", "video"}

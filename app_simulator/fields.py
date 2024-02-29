@@ -1954,24 +1954,62 @@ class WebFeedField(AdaptableMixin, StringField):
         )
 
 
-class DataFile:
-    __slots__ = ("_path", "_name", "_metadata_cache")
+class ContentList(list):
+    pass
+
+
+class ContentFile:
+    __slots__ = ("_path", "_name", "_metadata_cache", "_type")
 
     def __init__(self, path, name):
+        import mimetypes
+
         self._path = path
         self._name = name
         self._metadata_cache = None
+
+        mimetypes.init()
+        file_type = mimetypes.guess_type(self.url)[0]
+        if file_type.startswith("application"):
+            self._type = file_type.split("/")[1]
+        else:
+            self._type = file_type.split("/")[0]
+
+    @property
+    def id(self):
+        return self._name[:6]
 
     @property
     def name(self):
         return self._name
 
     @property
+    def type(self):
+        return self._type
+
+    @property
     def url(self):
         return "/.uploads/" + self._name
 
+    def _serialize(self):
+        serialized_content = {
+            "id": self.id,
+            "name": self.name,
+            "type": self.type,
+            "url": self.url,
+        }
 
-class ImageFile(DataFile):
+        if self.type in ("audio", "video"):
+            serialized_content["duration"] = self.duration
+
+        if self.type in ("image", "video"):
+            serialized_content["width"] = self.width
+            serialized_content["height"] = self.height
+
+        return serialized_content
+
+
+class ImageFile(ContentFile):
     def _metadata(self):
         if not self._metadata_cache:
             from PIL import Image
@@ -1990,7 +2028,7 @@ class ImageFile(DataFile):
         return self._metadata()[1]
 
 
-class VideoFile(DataFile):
+class VideoFile(ContentFile):
     def _metadata(self):
         if not self._metadata_cache:
             self._metadata_cache = utils.safe_probe_metadata(self._path)
@@ -2010,7 +2048,7 @@ class VideoFile(DataFile):
         return self._metadata()["height"]
 
 
-class AudioFile(DataFile):
+class AudioFile(ContentFile):
     def _metadata(self):
         if not self._metadata_cache:
             self._metadata_cache = utils.safe_probe_metadata(self._path)
@@ -2062,10 +2100,10 @@ class UserMediaField(AdaptableMixin, Field):
             elif file_type == "audio":
                 files.append(AudioFile(file_path, file_name))
             else:
-                files.append(DataFile(file_path, file_name))
+                files.append(ContentFile(file_path, file_name))
 
         if self.multiple:
-            self.data = files
+            self.data = ContentList(files)
         elif len(files) > 0:
             self.data = files[0]
         else:
