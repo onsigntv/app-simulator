@@ -1615,16 +1615,18 @@ class GoogleSheet:
         return jinja2.Markup(json.dumps(self.get_range(*ranges)))
 
 
-class GoogleSheetsURLField(StringField):
+class GoogleSheetsURLField(AdaptableMixin, StringField):
     RE_SHEET_ID = re.compile(r".*\/spreadsheets\/d\/([a-zA-Z0-9-_]+)\/.*$")
 
     def __init__(self, *args, **kwargs):
-        kwargs["validators"].append(validators.Regexp(self.RE_SHEET_ID))
         super().__init__(*args, **kwargs)
 
     def adapt_data(self):
         match = self.RE_SHEET_ID.match(self.data)
-        self.data = GoogleSheet(match.groups(1))
+        if match:
+            self.data = GoogleSheet(match.groups(1)[0])
+        else:
+            raise ValueError(f'Invalid sheet URL: "{self.data}"')
 
 
 class Instagram:

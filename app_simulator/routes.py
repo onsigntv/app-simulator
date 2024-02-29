@@ -197,7 +197,10 @@ async def preview_app(request):
         js_app_config = {}
         for field in form:
             if callable(getattr(field, "adapt", None)):
-                field.adapt()
+                try:
+                    field.adapt()
+                except Exception as exp:
+                    return handle_widget_exception(exp)
 
             if getattr(field, "is_attribute", None):
                 default = None
