@@ -1,17 +1,23 @@
 document.addEventListener(
   "DOMContentLoaded",
   function () {
-    var button = document.getElementById("pbInfoBtn");
-    function togglePlaybackInfo() {
-      var toggled = document.getElementById("_playback_info").toggleAttribute("hidden");
-      if (toggled) {
-        button.innerHTML = "Edit";
-      } else {
-        button.innerHTML = "Done";
+    function setupTextArea(elementId, btnId) {
+      var toggleButton = document.getElementById(btnId);
+
+      function toggleTextArea() {
+        var toggled = document.getElementById(elementId).toggleAttribute("hidden");
+        if (toggled) {
+          toggleButton.innerHTML = "Edit";
+        } else {
+          toggleButton.innerHTML = "Done";
+        }
       }
+
+      toggleButton.addEventListener("click", toggleTextArea, false);
+      toggleTextArea();
     }
-    button.addEventListener("click", togglePlaybackInfo, false);
-    togglePlaybackInfo();
+
+    setupTextArea("_playback_info", "pbInfoBtn");
 
     function toggleAttrConnection(checkbox) {
       var textArea = document.getElementById("_playback_info");

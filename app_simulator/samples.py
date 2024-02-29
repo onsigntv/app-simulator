@@ -648,6 +648,25 @@ PLAYBACK_INFO = """{
   }
 }"""
 
+PLAYBACK_LOOP = """{
+  "ts": 1702061023000,
+  "loops": [
+    {
+      "name": "PRIMARY",
+      "start": 1702060000000,
+      "content": {
+        "id": "__simulator__",
+        "playId": "#c444",
+        "kind": "APP",
+        "name": "app-name",
+        "attrs": {},
+        "reason": "LOOP",
+        "start": 1702061023000
+      }
+    }
+  ]
+}"""
+
 AIRPORT_DATA = """
 {
   "name": "",

@@ -143,8 +143,10 @@
       resolve();
     });
   });
+  var showEventTriggeredAt = 0;
   window.signageVisible = new Promise(function (resolve) {
     document.addEventListener("show", function () {
+      showEventTriggeredAt = Date.now();
       resolve();
     });
   });
@@ -166,9 +168,30 @@
     }
   }
 
+  if (window.__appFormData._simulate_playback_changes) {
+    function setBgColour() {
+      if (document.body.style.backgroundColor === "red") {
+        document.body.style.backgroundColor = "blue";
+      } else {
+        document.body.style.backgroundColor = "red";
+      }
+
+      signage.playbackLoops().then((value) => {
+        dispatch("playbackloopschanged", { detail: { value } }, internalTarget);
+        addNotification("playbackloopschanged event fired");
+      });
+    }
+
+    window.signageVisible.then(() => {
+      setInterval(setBgColour, 10_000);
+      setBgColour();
+    });
+  }
+
   var internalTarget = document.createElement("div");
   var brightness = 100;
   var volume = 100;
+  var playIdCount = 0;
   var signage = {
     addEventListener: function () {
       if (arguments[0] === "serialportdata") {
@@ -250,6 +273,90 @@
     },
     playbackInfo: function () {
       return JSON.stringify(playbackInfo);
+    },
+    playbackLoops: function () {
+      return new Promise((resolve) => {
+        var pbLoops = JSON.parse(JSON.stringify(window.__playbackLoops));
+
+        if (window.__appFormData._simulate_playback_changes && showEventTriggeredAt) {
+          var red = document.body.style.backgroundColor === "red";
+          var name = red ? "Red Image" : "Blue Image";
+          var id = red ? "32UXZyPl" : "jaUpoPKV";
+
+          var loop = {
+            name: "PRIMARY",
+            start: showEventTriggeredAt,
+            rect: [0, 0, window.innerWidth, window.innerHeight],
+            content: {
+              id: id,
+              kind: "IMAGE",
+              name: name,
+              attrs: {},
+              reason: "LOOP",
+              start: showEventTriggeredAt + playIdCount * 10_000,
+              playId: "#c10" + playIdCount++,
+            },
+          };
+
+          pbLoops.loops.push(loop);
+        }
+
+        pbLoops.ts = Date.now();
+        pbLoops.loops[0].content.start = showEventTriggeredAt;
+        resolve(pbLoops);
+      });
+    },
+    playbackLoopsDiff: function (prevPlaybackLoops, currentPlaybackLoops) {
+      var started = [];
+      var stopped = [];
+      var oldLoops = {};
+      var newLoops = {};
+
+      function mapContents(loop, path, paths) {
+        if (!loop.content) return;
+
+        path += "/" + loop.name + "/" + loop.content.id;
+        paths[path] = {
+          name: loop.name,
+          rect: loop.rect,
+          content: loop.content,
+        };
+
+        if (loop.content.tracks) {
+          for (var i = 0; i < loop.content.tracks.length; i++) {
+            mapContents(loop.content.tracks[i], path, paths);
+          }
+        }
+      }
+
+      if (prevPlaybackLoops) {
+        for (var i = 0; i < prevPlaybackLoops.loops.length; i++) {
+          var loop = prevPlaybackLoops.loops[i];
+          mapContents(loop, "", oldLoops);
+        }
+      }
+
+      for (i = 0; i < currentPlaybackLoops.loops.length; i++) {
+        loop = currentPlaybackLoops.loops[i];
+        mapContents(loop, "", newLoops);
+      }
+
+      Object.keys(oldLoops).forEach((path) => {
+        if (!newLoops[path]) {
+          loop = oldLoops[path];
+          loop.content.duration = (currentPlaybackLoops.ts - loop.content.start) / 1000;
+          stopped.push(loop);
+        }
+      });
+
+      Object.keys(newLoops).forEach((path) => {
+        if (!oldLoops[path]) started.push(newLoops[path]);
+      });
+
+      return {
+        stopped: stopped,
+        started: started,
+      };
     },
     removeEventListener: function () {
       internalTarget.removeEventListener.apply(internalTarget, arguments);

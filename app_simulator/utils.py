@@ -9,6 +9,14 @@ from urllib import request
 logger = logging.getLogger("onsigntv.utils")
 
 
+class CallableString:
+    def __str__(self):
+        return ""
+
+    def __call__(self, *args, **kwargs):
+        return ""
+
+
 def safe_function(
     if_except_return=None, if_except_call=None, except_list=(Exception), log_to=None
 ):

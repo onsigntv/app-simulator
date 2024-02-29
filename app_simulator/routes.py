@@ -15,7 +15,7 @@ from wtforms import DateTimeField
 from .app_config import SDK_TAG, extract_app_config, render_app_html
 from .fields import ContentFile, ContentList
 from .form import ALLOWED_FILE_TYPES, build_form
-from .samples import AIRPORT_DATA, INSTAGRAM_FEED, TWITTER_FEED
+from .samples import AIRPORT_DATA, INSTAGRAM_FEED, PLAYBACK_LOOP, TWITTER_FEED
 from .storage import get_file, save_file
 from .utils import (
     formdata_to_json,
@@ -41,6 +41,20 @@ def get_app_kind(config):
         return "Plugin App"
     elif config.get("audio"):
         return "Audio App"
+
+
+def build_playback_loops(config):
+    pb_loops = json.loads(PLAYBACK_LOOP)
+
+    loop = pb_loops["loops"][0]
+    if config.get("audio"):
+        loop["name"] = "AUDIO"
+    elif config.get("automation") or config.get("plugin"):
+        loop["name"] = "AUTOMATION"
+
+    loop["content"]["name"] = config["title"]
+
+    return json.dumps(pb_loops)
 
 
 def handle_widget_exception(exp, formdata=None):
@@ -254,6 +268,8 @@ async def preview_app(request):
 
         if data["_serial_port_config"]:
             app_global_objects["__serialPorts"] = data["_serial_port_config"]
+
+        app_global_objects["__playbackLoops"] = build_playback_loops(config)
 
         html, exp = render_app_html(data, path, track_file)
         if html is None:

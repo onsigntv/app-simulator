@@ -348,8 +348,9 @@ def default_jinja_env():
     env.globals["__field__"] = lambda *args, **kwargs: ""
     env.globals["__attr__"] = lambda *args, **kwargs: ""
 
-    env.globals["__loadsdk__"] = Markup(SDK_TAG)
+    env.globals["__loadsdk__"] = utils.CallableString()
 
+    env.globals["__id__"] = "__simulator__"
     env.globals["__lang__"] = "en"
     env.globals["__rtl__"] = False
     env.globals["__muted__"] = False
@@ -898,6 +899,12 @@ def extract_app_config(template_text):
             config["sdk"] = True
             return Markup(SDK_TAG)
 
+        def __call__(self, contentinfo=False):
+            if contentinfo:
+                config["needs_content_info"] = True
+
+            return str(self)
+
     # Then we render the template to remove all Jinja2 tags
     html = template.render(
         {
@@ -1036,6 +1043,20 @@ def extract_app_config(template_text):
         "required": None,
         "optgroup": None,
     }
+
+    if config.get("plugin"):
+        app_fields["_simulate_playback_changes"] = {
+            "type": "bool",
+            "label": "Simulate Playback Loop Changes",
+            "value": False,
+            "help_text": Markup(
+                """Alternate between two images every 10 seconds, triggering the <a href="https://github.com/onsigntv/apps/blob/master/docs/JSBRIDGE.md#signage-playbackloopschanged-event" target="_blank">
+                <code>playbackloopschanged</code>
+                </a> event."""
+            ),
+            "required": None,
+            "optgroup": None,
+        }
 
     app_fields["_serial_port_config"] = {
         "type": "text",
