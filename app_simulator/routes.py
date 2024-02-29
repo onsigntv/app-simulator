@@ -34,9 +34,11 @@ tracked_files = {}
 
 
 def get_app_kind(config):
-    if config.get("automation") or config.get("automation-app"):
+    if config.get("automation"):
         return "Automation App"
-    elif config.get("audio") or config.get("audio-app"):
+    elif config.get("plugin"):
+        return "Plugin App"
+    elif config.get("audio"):
         return "Audio App"
 
 

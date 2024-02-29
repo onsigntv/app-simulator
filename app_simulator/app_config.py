@@ -97,6 +97,8 @@ KNOWN_METAS = {
     "description",
     "automation",
     "automation-app",
+    "plugin",
+    "plugin-app",
 }
 
 DATA_SOURCE_TYPES = {
@@ -842,7 +844,18 @@ def extract_app_config(template_text):
 
     def detect_meta(name, value):
         if name in KNOWN_METAS:
-            config[name] = value
+            if name in (
+                "audio",
+                "audio-app",
+                "automation",
+                "automation-app",
+                "plugin",
+                "plugin-app",
+            ):
+                if value:
+                    config[name.split("-")[0]] = True
+            else:
+                config[name] = value
 
     def detect_attr(*, name, type, label, mode, help=None, optional=False):
         if not re.match("^[a-zA-Z][a-zA-Z0-9_]*$", name):
