@@ -1720,11 +1720,11 @@ AVAILABLE_LOCATIONS = [
     Location("Barcelona", 41.3851, 2.1734, pytz.timezone("Europe/Madrid")),
     Location("Delhi", 28.7041, 77.1025, pytz.timezone("Asia/Kolkata")),
     Location("Dubai", 25.2048, 55.2708, pytz.timezone("Asia/Dubai")),
-    Location("London", 51.5074, 0.1278, pytz.timezone("Europe/London")),
-    Location("New York", 40.7128, 74.0060, pytz.timezone("America/New_York")),
+    Location("London", 51.5074, -0.1278, pytz.timezone("Europe/London")),
+    Location("New York", 40.7128, -74.0060, pytz.timezone("America/New_York")),
     Location("Paris", 48.8566, 2.3522, pytz.timezone("Europe/Paris")),
     Location("Shanghai", 31.2304, 121.4737, pytz.timezone("Asia/Shanghai")),
-    Location("São Paulo", 23.5558, 46.6396, pytz.timezone("America/Sao_Paulo")),
+    Location("São Paulo", -23.5558, -46.6396, pytz.timezone("America/Sao_Paulo")),
     Location("Tokyo", 35.6762, 139.6503, pytz.timezone("Asia/Tokyo")),
 ]
 AVAILABLE_LOCATIONS_DICT = {l.city: l for l in AVAILABLE_LOCATIONS}
