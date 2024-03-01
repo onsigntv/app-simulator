@@ -1544,7 +1544,7 @@ class Font:
 
     @property
     def family(self):
-        return jinja2.Markup("'{self._font.family}'")
+        return jinja2.Markup(f"'{self._font.family}'")
 
     @property
     def style(self):
