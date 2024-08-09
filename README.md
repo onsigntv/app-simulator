@@ -5,7 +5,7 @@ This simulator makes it easier to develop [OnSign TV Apps][1] by testing your co
 
 ##  Installing
 
-This simulator requires Python 3.7 and up. You can optionally install [ffmpeg][2] to determine the duration of video and audio files, but that is not needed unless you plan on using those attributes on your app. If you want ID3 information for audio files, you'll also need to install [mutagen][3].
+This simulator requires Python 3.8 and up. You can optionally install [ffmpeg][2] to determine the duration of video and audio files, but that is not needed unless you plan on using those attributes on your app. If you want ID3 information for audio files, you'll also need to install [mutagen][3].
 
 
 ### Installing from [PyPI](https://pypi.org/)

@@ -35,7 +35,6 @@ setuptools.setup(
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
@@ -53,7 +52,7 @@ setuptools.setup(
         "console_scripts": ["onsigntv-app-simulator = app_simulator.__main__:main"]
     },
     keywords="development onsigntv apps",
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     package_data={
         "app_simulator": [
             "templates/base.html",
