@@ -303,7 +303,7 @@ async def preview_app(request):
 
 async def change_notification_sse(request):
     async with sse_response(request) as resp:
-        while True:
+        while resp.is_connected():
             if not tracked_files:
                 await resp.send("refresh")
                 return resp
