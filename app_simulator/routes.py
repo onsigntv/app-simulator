@@ -302,7 +302,6 @@ async def preview_app(request):
 
 
 async def change_notification_sse(request):
-    loop = request.app.loop
     async with sse_response(request) as resp:
         while True:
             if not tracked_files:
@@ -323,7 +322,7 @@ async def change_notification_sse(request):
                             tracked_files[path] = actual_modification
                 else:
                     logger.info("File not found: %s", path)
-            await asyncio.sleep(1, loop=loop)
+            await asyncio.sleep(1)
 
     return resp
 
