@@ -1927,7 +1927,7 @@ class WebFeed:
         if isinstance(key, slice):
             return self.__class__(
                 url=self.url,
-                title=self.tile,
+                title=self.title,
                 subtitle=self.subtitle,
                 entries=self._entries[key],
             )
