@@ -8,8 +8,15 @@ from dataclasses import dataclass
 
 import jinja2
 import pytz
-from wtforms import Field, IntegerField, SelectField, StringField, validators
-from wtforms.widgets import FileInput, Input, TextInput
+from wtforms import (
+    Field,
+    IntegerField,
+    SelectField,
+    SelectMultipleField,
+    StringField,
+    validators,
+)
+from wtforms.widgets import FileInput, Input, Select, TextInput
 
 from . import utils
 from .samples import INSTAGRAM_FEED, TWITTER_FEED, VIDEOS
@@ -410,10 +417,15 @@ class CurrencyField(AdaptableMixin, SelectField):
             self.choices.insert(0, ("", "-----------"))
 
     def adapt_data(self):
-        if isinstance(self.data, str):
-            self.data = Currency(self.data)
-        else:
-            self.data = [Currency(d) for d in self.data]
+        self.data = Currency(self.data)
+
+
+class MultiCurrencyField(CurrencyField, SelectMultipleField):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs, widget=Select(multiple=True))
+
+    def adapt_data(self):
+        self.data = [Currency(d) for d in self.data]
 
 
 class FontWeight:

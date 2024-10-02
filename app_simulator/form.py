@@ -19,6 +19,7 @@ from .fields import (
     GoogleSheetsURLField,
     InstagramField,
     LocationField,
+    MultiCurrencyField,
     StockExchangeField,
     TwitterField,
     UserMediaField,
@@ -337,11 +338,10 @@ def build_form(config):
             )
 
         elif kind == "multicurrency":
-            fields[name] = CurrencyField(
+            fields[name] = MultiCurrencyField(
                 label=label,
                 description=help_text,
                 validators=validators,
-                widget=Select(multiple=True),
                 render_kw={"class": "form-control"},
             )
 
