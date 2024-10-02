@@ -158,6 +158,19 @@
     /* noop */
   }
 
+  function parseHeaders(headers) {
+    var headerArray = headers.split("\r\n");
+
+    return headerArray.reduce(function (parsedHeaders, header) {
+      if (!header) return parsedHeaders;
+
+      var parts = header.split(": ");
+      parsedHeaders[parts[0].toLowerCase()] = parts[1];
+
+      return parsedHeaders;
+    }, {});
+  }
+
   var serialPortCallbacks = {};
   function serialPortDispatch(alias, data) {
     var data = { detail: { name: alias, value: data } };
@@ -202,6 +215,38 @@
       } else {
         internalTarget.addEventListener.apply(internalTarget, arguments);
       }
+    },
+    downloadFile: function (url, opts) {
+      return new Promise((resolve, reject) => {
+        var req = new XMLHttpRequest();
+
+        req.onerror = () => {
+          reject({
+            status: req.status,
+            headers: parseHeaders(req.getAllResponseHeaders()),
+          });
+        };
+
+        req.onload = () => {
+          if (req.status >= 400) {
+            req.onerror();
+          }
+          var downloadResponse = {
+            url: url,
+            fresh: true,
+            headers: parseHeaders(req.getAllResponseHeaders()),
+          };
+          if (opts.readText) downloadResponse.text = req.responseText;
+          resolve(downloadResponse);
+        };
+
+        if (!window.__appFormData["_proxy_requests"]) {
+          url = "/.proxy_request?url=" + encodeURIComponent(url);
+        }
+
+        req.open(opts.method || "GET", url);
+        req.send(opts.body);
+      });
     },
     getBrightness: function () {
       return brightness;
@@ -361,6 +406,7 @@
     removeEventListener: function () {
       internalTarget.removeEventListener.apply(internalTarget, arguments);
     },
+    revokeDownloadURL() {},
     sendEvent: function (level, code, message, extra) {
       console.log("SENT EVENT", {
         level: level,
