@@ -5,7 +5,7 @@ import setuptools
 # The directory containing this file
 HERE = pathlib.Path(__file__).parent
 
-VERSION = "1.3.1"
+VERSION = "1.4.0"
 
 DESCRIPTION = (
     "Assist the development of apps for OnSign TV platform by running them locally."
