@@ -17,6 +17,20 @@ class CallableString:
         return ""
 
 
+json_tr = str.maketrans(
+    {
+        "'": r"\u0027",
+        "&": r"\u0026",
+        "<": r"\u003c",
+        ">": r"\u003e",
+    }
+)
+
+
+def safe_json(element):
+    return json.dumps(element).translate(json_tr)
+
+
 def safe_function(
     if_except_return=None, if_except_call=None, except_list=(Exception), log_to=None
 ):

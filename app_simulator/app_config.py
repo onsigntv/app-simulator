@@ -244,7 +244,11 @@ class LocalContextManager:
     ):
         data_source_item = self.ctx["context"].get(name)
         if data_source_item:
-            return data_source_item._render(name)
+            simulate_updates = self.ctx["context"].get(
+                "_simulate_datafeed_updates", False
+            )
+
+            return data_source_item._render(name, simulate_updates)
         return ""
 
     def do_fetch_feed(self, value):
@@ -1053,6 +1057,18 @@ def extract_app_config(template_text):
                 """Alternate between two images every 10 seconds, triggering the <a href="https://github.com/onsigntv/apps/blob/master/docs/JSBRIDGE.md#signage-playbackloopschanged-event" target="_blank">
                 <code>playbackloopschanged</code>
                 </a> event."""
+            ),
+            "required": None,
+            "optgroup": None,
+        }
+
+    if any(f.get("type") == "datafeed" for f in app_fields.values()):
+        app_fields["_simulate_datafeed_updates"] = {
+            "type": "bool",
+            "label": "Simulate Data Feed Updates",
+            "value": False,
+            "help_text": Markup(
+                """Trigger the Data Feed <code>update</code> Promise with updated content every 10 seconds."""
             ),
             "required": None,
             "optgroup": None,

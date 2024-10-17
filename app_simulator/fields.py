@@ -2122,14 +2122,39 @@ class UserMediaField(AdaptableMixin, Field):
             self.data = None
 
 
-DATASINK_TEMPLATE = """
+DATAFEED_TEMPLATE = """
 <script type="text/javascript">
   window.%(variable)s = new Promise(function (resolve) {
+    var source = '%(data_source)s';
+    var fields = '%(fields)s';
+    var updateSource = '%(update_source)s';
+
+    function createUpdatePromise(currSource) {
+      return new Promise(function (resolve) {
+        setTimeout(function () {
+          var nextSource = (currSource === source) ? updateSource : source;
+          var updatePromise = createUpdatePromise(nextSource);
+
+          resolve({
+            fields: JSON.parse(fields),
+            source: JSON.parse(nextSource),
+            update: updatePromise
+          });
+        }, 10 * 1000);
+      });
+    }
+
+    var updatePromise = new Promise(function (resolve) {
+      if (%(simulate_updates)s) {
+        resolve(createUpdatePromise(source));
+      }
+    });
+
     window.signageLoaded.then(function () {
       resolve({
-        fields: %(fields)s,
-        source: %(data_source)s,
-        update: new Promise(function () {})
+        fields: JSON.parse(fields),
+        source: JSON.parse(source),
+        update: updatePromise
       });
     });
   });
@@ -2220,7 +2245,7 @@ class DataSourceItem:
 
         return rows
 
-    def _render(self, data_source):
+    def _render(self, data_source, simulate_updates=False):
         from jinja2 import Markup
 
         data_fields = {}
@@ -2230,14 +2255,25 @@ class DataSourceItem:
         if not self._cache.get((data_source, self._entry_count)):
             self._cache[(data_source, self._entry_count)] = self._generate_rows()
 
+        update_source = None
+        if simulate_updates:
+            if not self._cache.get((f"_update_{data_source}", self._entry_count)):
+                self._cache[(f"_update_{data_source}", self._entry_count)] = (
+                    self._generate_rows()
+                )
+
+            update_source = self._cache[(f"_update_{data_source}", self._entry_count)]
+
         return Markup(
-            DATASINK_TEMPLATE
+            DATAFEED_TEMPLATE
             % {
                 "variable": data_source,
-                "fields": json.dumps(data_fields),
-                "data_source": json.dumps(
+                "fields": utils.safe_json(data_fields),
+                "data_source": utils.safe_json(
                     self._cache[(data_source, self._entry_count)]
                 ),
+                "update_source": utils.safe_json(update_source),
+                "simulate_updates": json.dumps(simulate_updates),
             }
         )
 
