@@ -20,6 +20,7 @@ from .storage import get_file, save_file
 from .utils import (
     formdata_to_json,
     get_resource_string,
+    inject_datasource_script,
     inject_script_into_html,
 )
 
@@ -210,12 +211,16 @@ async def preview_app(request):
         data = {}
         attrs_info = {}
         js_app_config = {}
+        has_datafeed = False
         for field in form:
             if callable(getattr(field, "adapt", None)):
                 try:
                     field.adapt()
                 except Exception as exp:
                     return handle_widget_exception(exp)
+                
+            if getattr(field, "is_datafeed", False):
+                has_datafeed = True
 
             if getattr(field, "is_attribute", None):
                 default = None
@@ -276,6 +281,9 @@ async def preview_app(request):
             return handle_widget_exception(exp, formdata)
 
         html = inject_script_into_html(html, SDK_TAG, app_global_objects)
+        
+        if has_datafeed:
+            html = inject_datasource_script(html)
 
         return Response(text=html, content_type="text/html")
     else:

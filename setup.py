@@ -5,7 +5,7 @@ import setuptools
 # The directory containing this file
 HERE = pathlib.Path(__file__).parent
 
-VERSION = "1.4.0"
+VERSION = "1.5.0"
 
 DESCRIPTION = (
     "Assist the development of apps for OnSign TV platform by running them locally."
@@ -62,6 +62,7 @@ setuptools.setup(
             "static/shim/Intl.min.js",
             "static/shim/signage.js",
             "static/js/widget_form.js",
+            "static/js/datasource.js",
         ]
     },
     data_files=[(".", ["requirements.txt", "requirements-dev.txt"])],

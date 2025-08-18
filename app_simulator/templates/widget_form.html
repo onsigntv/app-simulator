@@ -74,6 +74,31 @@
               </tr>
             </table>
             <div hidden="hidden">{{ field() }}</div>
+          {% elif field.is_datafeed %}
+            {{ field() }}
+            <div class="input-group mb-3">
+              <input type="text" id="url{{ field.label.field_id }}" data-target-id="{{ field.label.field_id }}" class="form-control js-datafeed-input">
+              <div class="input-group-append">
+                <button class="btn btn-outline-secondary js-open-config-datafeed" type="button" data-toggle="modal" data-target="#modal{{ field.label.field_id }}" data-fields='{{ field.fields|tojson }}' data-target-id="{{ field.label.field_id }}" title="Enter a valid URL to configure the Data Feed" disabled>Configure</button>
+              </div>
+            </div>
+            <div class="modal fade" id="modal{{ field.label.field_id }}" data-backdrop="static" data-keyboard="false" tabindex="-1">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">Data Feed Config</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span>&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body"></div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" style="margin-right: auto;" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary js-save-config-datafeed" data-target-id="{{ field.label.field_id }}" id="save{{ field.label.field_id }}" data-dismiss="modal">OK</button>
+                  </div>
+                </div>
+              </div>
+            </div>
           {% else %}
             {% if field.label.field_id == "_playback_info" %}
               &nbsp;&nbsp;&nbsp;<button type="button" class="btn btn-light btn-sm" id="pbInfoBtn">Edit</button>

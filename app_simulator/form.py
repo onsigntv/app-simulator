@@ -477,13 +477,11 @@ def build_form(config):
         elif kind == "datafeed":
             fields[name] = DataSourceField(
                 fields=field["datasource_fields"],
-                label=label + " | number of entries",
+                required=field.get("required", False),
+                label=label + " | URL or Number of Random Entries",
                 description=help_text,
                 default=field["value"],
-                render_kw={
-                    "class": "form-control",
-                },
-                widget=Input(input_type="number"),
+                widget=Input(input_type="hidden"),
                 validators=validators,
             )
 

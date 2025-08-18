@@ -2124,40 +2124,7 @@ class UserMediaField(AdaptableMixin, Field):
 
 DATAFEED_TEMPLATE = """
 <script type="text/javascript">
-  window.%(variable)s = new Promise(function (resolve) {
-    var source = '%(data_source)s';
-    var fields = '%(fields)s';
-    var updateSource = '%(update_source)s';
-
-    function createUpdatePromise(currSource) {
-      return new Promise(function (resolve) {
-        setTimeout(function () {
-          var nextSource = (currSource === source) ? updateSource : source;
-          var updatePromise = createUpdatePromise(nextSource);
-
-          resolve({
-            fields: JSON.parse(fields),
-            source: JSON.parse(nextSource),
-            update: updatePromise
-          });
-        }, 10 * 1000);
-      });
-    }
-
-    var updatePromise = new Promise(function (resolve) {
-      if (%(simulate_updates)s) {
-        resolve(createUpdatePromise(source));
-      }
-    });
-
-    window.signageLoaded.then(function () {
-      resolve({
-        fields: JSON.parse(fields),
-        source: JSON.parse(source),
-        update: updatePromise
-      });
-    });
-  });
+  window.%(variable)s = window.__handleDataFeed(%(opts)s);
 </script>
 """
 
@@ -2165,8 +2132,8 @@ DATAFEED_TEMPLATE = """
 class DataSourceItem:
     _cache = {}
 
-    def __init__(self, entry_count, fields):
-        self._entry_count = entry_count
+    def __init__(self, config, fields):
+        self._config = config
         self._fields = fields
 
     def _generate_text(self):
@@ -2203,10 +2170,54 @@ class DataSourceItem:
         return datetime.datetime.now() - datetime.timedelta(
             hours=random.randint(-20000, 20000)
         )
+    
+    def _get_rows(self):
+        from urllib import request
 
-    def _generate_rows(self):
         rows = []
-        for i in range(self._entry_count):
+        modat = None
+
+        if self._config.get("url"):
+            url = self._config["url"]
+
+            allowed_types = {
+                "text": ("text", "url", "number", "integer", "time", "date", "datetime"),
+                "media": ("media", "image", "video"),
+            }
+
+            response = request.urlopen(url)
+            if response.status == 200:
+                try:
+                    raw_data = response.read().decode()
+                    datafeed = json.loads(raw_data)
+                    modat = datafeed["modat"]
+                    columns = {
+                        col["guid"]: col for col in datafeed["columns"]
+                    }
+
+                    for row in datafeed["rows"]:
+                        row_data = {}
+                        for field in self._fields:
+                            column_guid = self._config.get(field["name"])
+                            if column_guid:
+                                column_type = columns.get(column_guid)["kind"]
+                                if column_type not in allowed_types.get(field["type"], (field["type"],)):
+                                    raise ValueError("Invalid Data Feed")
+
+                                value = row.get(column_guid)
+                                row_data[field["name"]] = value
+                        rows.append(row_data)
+                except Exception:
+                    raise ValueError("Invalid Data Feed")
+            else:
+                raise ValueError("Invalid Data Feed")
+            
+        return rows, modat
+
+    def _generate_rows(self, length):
+        rows = []
+
+        for i in range(length):
             row = {}
             for field in self._fields:
                 if field["type"] == "text":
@@ -2245,35 +2256,50 @@ class DataSourceItem:
 
         return rows
 
-    def _render(self, data_source, simulate_updates=False):
+    def _render(self, name, label):
         from jinja2 import Markup
 
         data_fields = {}
         for field in self._fields:
             data_fields[field["name"]] = True
 
-        if not self._cache.get((data_source, self._entry_count)):
-            self._cache[(data_source, self._entry_count)] = self._generate_rows()
+        rows = []
+        update_rows = []
+        modat = None
 
-        update_source = None
-        if simulate_updates:
-            if not self._cache.get((f"_update_{data_source}", self._entry_count)):
-                self._cache[(f"_update_{data_source}", self._entry_count)] = (
-                    self._generate_rows()
-                )
+        if self._config.get("url"):
+            rows, modat = self._get_rows()
+        else:
+            entry_count = self._config.get("entry_count", 0)
+            if not isinstance(entry_count, int):
+                entry_count = 0
 
-            update_source = self._cache[(f"_update_{data_source}", self._entry_count)]
+            if not self._cache.get((name, entry_count)):
+                self._cache[(name, entry_count)] = self._generate_rows(entry_count)
+
+            rows = self._cache[(name, entry_count)]
+
+            if not self._cache.get((f"_update_{name}", entry_count)):
+                self._cache[(f"_update_{name}", entry_count)] = self._generate_rows(entry_count)
+            
+            update_rows = self._cache[(f"_update_{name}", entry_count)]
+
+        opts = {
+            "fields": data_fields,
+            "source": rows,
+            "config": self._config,
+            "modat": modat,
+            "label": label,
+        }
+
+        if update_rows:
+            opts["update_source"] = update_rows
 
         return Markup(
             DATAFEED_TEMPLATE
             % {
-                "variable": data_source,
-                "fields": utils.safe_json(data_fields),
-                "data_source": utils.safe_json(
-                    self._cache[(data_source, self._entry_count)]
-                ),
-                "update_source": utils.safe_json(update_source),
-                "simulate_updates": json.dumps(simulate_updates),
+                "variable": name,
+                "opts": utils.safe_json(opts),
             }
         )
 
@@ -2299,11 +2325,23 @@ class AppAttributeField(StringField):
 
         return ""
 
-
-class DataSourceField(AdaptableMixin, IntegerField):
-    def __init__(self, fields, *args, **kwargs):
+class DataSourceField(AdaptableMixin, StringField):
+    def __init__(self, fields, required, *args, **kwargs):
         self.fields = fields
+        self.is_datafeed = True
+        self.required = required
         super().__init__(*args, **kwargs)
 
     def adapt_data(self):
-        self.data = DataSourceItem(self.data, self.fields)
+        try:
+            config_data = json.loads(self.data)
+        except json.JSONDecodeError:
+            raise ValueError("Invalid Data Feed Configuration")
+        
+        if not config_data and self.required:
+            raise ValueError("Invalid Data Feed Configuration")
+        
+        if config_data.get("url"):
+            config_data["url"] = config_data["url"] + ("&" if "?" in config_data["url"] else "?") + "json=1"
+
+        self.data = DataSourceItem(config_data, self.fields)

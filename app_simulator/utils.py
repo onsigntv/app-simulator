@@ -151,6 +151,27 @@ def formdata_to_json(data):
     return json.dumps(_data)
 
 
+def inject_datasource_script(html):
+    script = re.sub(
+        r"\s+", " ",
+        get_resource_string("static/js/datasource.js").replace("\n", "")
+    )
+
+    script_tag = f"""
+<script type="text/javascript">
+  {script}
+</script>
+    """
+
+    match = re.search(r"<\s*script", html, re.I)
+    if match:
+        html = html[:match.start()] + script_tag + html[match.start():]
+    else:
+        html = script_tag + html
+
+    return html
+    
+
 def inject_script_into_html(html, sdk_tag, global_objects):
     global_objects_script = ""
     for key, value in global_objects.items():
